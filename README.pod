@@ -1,0 +1,9 @@
+=pod
+
+=encoding utf8
+
+=head2 Net::HTTP
+
+Interfaces and default implementations for rolling your own http client and/or components
+
+=cut
