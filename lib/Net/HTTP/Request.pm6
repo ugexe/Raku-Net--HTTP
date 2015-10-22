@@ -3,7 +3,7 @@ use Net::HTTP::Interfaces;
 class Net::HTTP::Request does Request {
     has URL $.url is rw;
     has $.method  is rw;
-    has %.header  is rw; # HTTP::UserAgent::Request has `method hash` so should be interchangable already
+    has %.header  is rw;
     has %.trailer is rw;
     has $.body    is rw;
 

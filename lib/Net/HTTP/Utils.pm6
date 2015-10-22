@@ -1,29 +1,28 @@
 unit module Net::HTTP::Utils;
 
-role IO::HTTPReader is export {
-    method header-supply {
-        supply {
-            state @crlf;
-            while $.recv(1, :bin) -> \data {
-                my $d = buf8.new(data).decode('latin-1');
-                @crlf.push($d);
-                emit($d);
-                @crlf.shift if @crlf.elems > 4;
-                last if @crlf ~~ ["\r", "\n", "\r", "\n"];
-            }
-            done();
+role IO::Socket::HTTP {
+    has Supply $.header;
+    has Supply $.body;
+    has $.input-line-separator = "\r\n";
+
+    method get(Bool :$bin where True) {
+        my @sep      = $.input-line-separator.ords;
+        my $sep-size = @sep.elems;
+        my @buf;
+
+        while $.recv(1, :bin) -> \data {
+            @buf.append: data.contents;
+            last if @buf[*-($sep-size)..*] ~~ @sep;
+        }
+
+        @buf ?? buf8.new(@buf[0..*-($sep-size+1)]) !! Buf;
+    }
+
+    method lines(Bool :$bin where True) {
+        gather while (my $line = self.get(:bin)).defined {
+            take $line;
         }
     }
-    method body-supply {
-        supply {
-            while $.recv(:bin) -> \data {
-                my $d = buf8.new(data);
-                emit($d);
-            }
-            done();
-        }
-    }
-    method trailer-supply { }
 }
 
 # decode a chunked buffer (ignores extensions)

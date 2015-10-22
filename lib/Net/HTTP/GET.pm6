@@ -24,25 +24,20 @@ class Net::HTTP::GET does RoundTripper {
         self!hijack($req);
 
         # MAKE REQUEST
-        my $socket = self.dial($req) but IO::HTTPReader;
+        my $socket = self.dial($req) but IO::Socket::HTTP;
         $socket.print(~$req);
 
         # GET AND PARSE RESPONSE
-        my @header-lines = $socket.header-supply.lines.grep(*.so).eager;
-        # first line is the status line... maybe it should not be part of header-supply?
-        my %rep-header = @header-lines[1..*].map({ my ($h, $f) = $_.split(/':' \s+/, 2); $h.lc => $f // '' });
-        # todo: look at content-length and pass into body-supply reader?
+        my ($start-line, @header) = $socket.lines(:bin).map: {$_ or last}
+        my %res-header = @header>>.unpack('A*').map({ my ($h, $f) = $_.split(/':' \s+/, 2); $h.lc => $f // '' });
 
-        # We should return at this point and let the body continue to fill a buffer
-        # or maybe not even read the rest of the socket depending on what the headers 
-        # say and if any connections are waiting for that socket.
-        my $rep-body = $socket.body-supply;
-        $rep-body = $rep-body>>.decode.join; # TEMPORARY, content decoding belongs elsewhere
-        $socket.close() if %rep-header<connection> ~~ /[:i close]/;
+        my $res-body   = $socket.recv(:bin);
+        $res-body = $res-body.decode.join; # TEMPORARY, content decoding belongs elsewhere
 
-        my $rep = Net::HTTP::Response.new(:body($rep-body), :header(%rep-header));
+        $socket.close() if %res-header<connection>.defined && %res-header<connection> ~~ /[:i close]/;
+        my $res = Net::HTTP::Response.new(:body($res-body), :header(%res-header));
     }
-    
+
     
     method !hijack(Request $req) {
         my $header := $req.header;
