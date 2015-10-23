@@ -12,12 +12,14 @@ class Net::HTTP::GET does RoundTripper {
 
     # `GET` is already in the name, so lets just use CALL-ME() to access this namespace like a routine
     proto method CALL-ME(|) {*}
-    multi method CALL-ME(Str $abs-url --> Response) {
+    multi method CALL-ME(Str $abs-url, |c --> Response) {
         my $url = Net::HTTP::URL.new($abs-url);
         my $req = Net::HTTP::Request.new(:$url, :method<GET>);
-        samewith($req);
+        samewith($req, |c);
     }
-    multi method CALL-ME(Request $req --> Response) { self.round-trip($req) }
+    multi method CALL-ME(Request $req, Response ::RESPONSE = Net::HTTP::Response --> Response) {
+        self.round-trip($req, RESPONSE) 
+    }
 
     # mix in a proxy role and the host and request target url are set appropriately automatically
     # method proxy { ::('Net::HTTP::URL').new("http://proxy-lord.org") }
