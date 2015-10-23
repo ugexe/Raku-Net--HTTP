@@ -5,6 +5,8 @@ use Net::HTTP::Response;
 use Net::HTTP::URL;
 use Net::HTTP::Utils;
 
+# Most of this will be moved into Transport, this is just a convienient starting spot
+
 class Net::HTTP::GET does RoundTripper {
     also does Net::HTTP::Dialer;
 
@@ -20,7 +22,7 @@ class Net::HTTP::GET does RoundTripper {
     # mix in a proxy role and the host and request target url are set appropriately automatically
     # method proxy { ::('Net::HTTP::URL').new("http://proxy-lord.org") }
 
-    method round-trip(Request $req --> Response) {
+    method round-trip(Request $req, Response ::RESPONSE = Net::HTTP::Response --> Response) {
         self!hijack($req);
 
         # MAKE REQUEST
@@ -29,13 +31,13 @@ class Net::HTTP::GET does RoundTripper {
 
         # GET AND PARSE RESPONSE
         my ($start-line, @header) = $socket.lines(:bin).map: {$_ or last}
-        my %res-header = @header>>.unpack('A*').map({ my ($h, $f) = $_.split(/':' \s+/, 2); $h.lc => $f // '' });
-
+        my %res-header = @header>>.unpack('A*').map({ my ($h, $f) = .split(/':' \s+/, 2); $h.lc => $f // '' });
         my $res-body   = $socket.recv(:bin);
+
         $res-body = $res-body.decode.join; # TEMPORARY, content decoding belongs elsewhere
 
         $socket.close() if %res-header<connection>.defined && %res-header<connection> ~~ /[:i close]/;
-        my $res = Net::HTTP::Response.new(:body($res-body), :header(%res-header));
+        my $res = RESPONSE.new(:body($res-body), :header(%res-header));
     }
 
     
@@ -47,7 +49,7 @@ class Net::HTTP::GET does RoundTripper {
         $header<host>  = $proxy ?? $proxy.host !! $req.url.host;
 
         # override any possible default start-line() method behavior of using a relative request target url if $proxy
-        $req does role :: { method start-line {$ = "{~$req.method} {~$req.url} HTTP/1.1"} } if $proxy;
+        $req does role :: { method path {$ = ~$req.url } } if $proxy;
 
         # automatically handle content-length setting
         $header<content-length> = !$req.body ?? 0 !! $req.body ~~ Buf ?? $req.body.bytes !! $req.body.encode.bytes;

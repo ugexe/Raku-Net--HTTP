@@ -1,8 +1,6 @@
 unit module Net::HTTP::Utils;
 
 role IO::Socket::HTTP {
-    has Supply $.header;
-    has Supply $.body;
     has $.input-line-separator = "\r\n";
 
     method get(Bool :$bin where True) {
@@ -25,7 +23,6 @@ role IO::Socket::HTTP {
     }
 }
 
-# decode a chunked buffer (ignores extensions)
 sub ChunkedReader(buf8 $buf) is export {
     my @data;
     my $i = 0;
@@ -46,4 +43,9 @@ sub ChunkedReader(buf8 $buf) is export {
 
     my buf8 $r = @data.reduce(-> $a is copy, $b { $a ~= $b });
     return $r;
+}
+
+# header-case
+sub hc(Str:D $str) is export {
+    $str.split("-")>>.wordcase.join("-")
 }

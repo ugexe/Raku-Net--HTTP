@@ -1,7 +1,10 @@
 class Net::HTTP::Interfaces { }
 
 role Request {
-    method start-line { ... }
+    method method     { ... }
+    method path       { ... }
+    method proto      { ... }
+
     method header     { ... }
     method body       { ... }
     method trailer    { ... }
