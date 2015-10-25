@@ -38,9 +38,12 @@ class Net::HTTP::Response does Response {
         $bbuf = $bbuf ?? buf8.new($bbuf) !! Buf;
 
         my @headers     = @hbuf>>.unpack('A*').split($nl).grep(*.so);
-        my $status-line = %_<status-line> // (@headers.shift if @headers[0] ~~ self!status-line-matcher);
-        my %header andthen do { %header{$_[0]} = $_[1] for @headers>>.split(/':' \s+/, 2) }
 
+        # If the status-line was passed in as a named argument, then we assume its not also in @headers.
+        # Otherwise we will use the first line of @headers if it matches a status-line like string.
+        my $status-line = %_<status-line> // (@headers.shift if @headers[0] ~~ self!status-line-matcher);
+
+        my %header = @headers>>.split(/':' \s+/, 2)>>.hash;
         samewith(:$status-line, :%header, :body($bbuf), |%_);
     }
 
