@@ -19,7 +19,7 @@ class Net::HTTP::Response does Response {
         # This should be the main constructor for creating response objects as
         # using all named parameters makes it easier when multiple positionals
         # could be a Buf (think HTTP2 headers + response body both as :bin)
-        self.bless(:$status-line, :%header, :$body, :%trailer, |$_);
+        self.bless(:$status-line, :%header, :$body, :%trailer, |%_);
     }
     multi method new(Buf $raw, *%_) {
         # An easy way to create a response object for an entire socket read
