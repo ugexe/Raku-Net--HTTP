@@ -18,10 +18,16 @@ class Net::HTTP::Transport does RoundTripper {
         $socket.print(~$req);
 
         # GET AND PARSE RESPONSE
-        my @header = $socket.lines(:bin).map: {$_ or last}
-        my $body   = $socket.recv(:bin);
-
-        my $res    = RESPONSE.new($body, @header);
+        # Realistically the header decoding will go into its own method so that HPACK and other
+        # compressions can be applied as needed. For now (with just HTTP1.1) it helps to visualize
+        # by having it grouped nicely here.
+        my $status-line = $socket.get(:bin).unpack('A*');
+        my %header      = $socket.lines(:bin).map({$_ or last})>>.unpack('A*')>>.split(/':' \s+/, 2)>>.hash;
+        my $body        = $socket.recv(:bin);
+        my $res         = RESPONSE.new(:$status-line, :$body, :%header);
+        # or just: `my $res = RESPONSE.new($socket.recv(:bin))` but we use the named arguments
+        # to make it easier to use alternative response objects which don't accept a raw buffer
+        # of the entire message
 
         $socket.close() if $res.header<connection>.defined && $res.header<connection> ~~ /[:i close]/;
 
