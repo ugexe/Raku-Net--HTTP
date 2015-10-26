@@ -15,7 +15,7 @@ class Net::HTTP::Transport does RoundTripper {
 
         # MAKE REQUEST
         my $socket = self.dial($req) but IO::Socket::HTTP;
-        $socket.print(~$req);
+        $socket.write($req.?raw // $req.Str.encode);
 
         # GET AND PARSE RESPONSE
         # Realistically the header decoding will go into its own method so that HPACK and other
@@ -31,7 +31,7 @@ class Net::HTTP::Transport does RoundTripper {
         # of the entire message
 
         # todo: avoid closing the socket if another request is waiting to use it
-        $socket.close() if $res.header<connection>.defined && $res.header<connection> ~~ /[:i close]/;
+        $socket.close() if $res.header<Connection>.defined && $res.header<Connection> ~~ /[:i close]/;
 
         $res;
     }
@@ -41,15 +41,15 @@ class Net::HTTP::Transport does RoundTripper {
         my $proxy   = self.?proxy;
 
         # set the host field to either an optional proxy's url host or the request's url host
-        $header<host>  = $proxy ?? $proxy.host !! $req.url.host;
+        $header<Host>  = $proxy ?? $proxy.host !! $req.url.host;
 
         # override any possible default start-line() method behavior of using a relative request target url if $proxy
         $req does role :: { method path {$ = ~$req.url } } if $proxy;
 
         # automatically handle content-length setting
-        $header<content-length> = !$req.body ?? 0 !! $req.body ~~ Buf ?? $req.body.bytes !! $req.body.encode.bytes;
+        $header<Content-Length> = !$req.body ?? 0 !! $req.body ~~ Buf ?? $req.body.bytes !! $req.body.encode.bytes;
 
         # default to closed connections
-        $header<connection> //= 'Close';
+        $header<Connection> //= 'close';
     }
 }
