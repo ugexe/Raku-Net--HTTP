@@ -9,7 +9,7 @@ class Net::HTTP::GET {
     proto method CALL-ME(|) {*}
     multi method CALL-ME(Str $abs-url, |c --> Response) {
         my $url = Net::HTTP::URL.new($abs-url);
-        my $req = Net::HTTP::Request.new(:$url, :method<GET>);
+        my $req = Net::HTTP::Request.new(:$url, :method<GET>, header => :User-Agent<perl6-net-http>);
         samewith($req, |c);
     }
     multi method CALL-ME(Request $req, Response ::RESPONSE = Net::HTTP::Response --> Response) {
