@@ -22,28 +22,23 @@ class Net::HTTP::Response does Response {
         self.bless(:$status-line, :%header, :$body, :%trailer, |%_);
     }
     multi method new(Blob $raw, *%_) {
-        # An easy way to create a response object for an entire socket read
+        # Decodes headers to a string, and leaves the body as binary
         # i.e. `::("$?CLASS").new($socket.recv(:bin))`
         my $nl       = "\r\n";
         my @sep      = "{$nl}{$nl}".ords;
         my $sep-size = @sep.elems;
-        my (@hbuf, $bbuf);
+        my $split-at = $raw.grep(*, :k).first({ $raw[$^a..($^a + $sep-size - 1)] ~~ @sep }, :k);
 
-        for @($raw.contents).pairs -> $data {
-            @hbuf.append: $data.value;
-            $bbuf = $raw[($data.key+1)..*] and last if @hbuf[*-($sep-size)..*] ~~ @sep;
-        }
+        my $hbuf := $raw.subbuf(0, $split-at + $sep-size);
+        my $bbuf := $raw.subbuf($split-at + $sep-size);
 
-        @hbuf = @hbuf ?? buf8.new(@hbuf) !! Blob;
-        $bbuf = $bbuf ?? buf8.new($bbuf) !! Blob;
-
-        my @headers     = @hbuf>>.unpack('A*').split($nl).grep(*.so);
+        my @header-lines = $hbuf.unpack('A*').split($nl).grep(*.so);
 
         # If the status-line was passed in as a named argument, then we assume its not also in @headers.
         # Otherwise we will use the first line of @headers if it matches a status-line like string.
-        my $status-line = %_<status-line> // (@headers.shift if @headers[0] ~~ self!status-line-matcher);
+        my $status-line = %_<status-line> // (@header-lines.shift if @header-lines[0] ~~ self!status-line-matcher);
 
-        my %header = @headers>>.split(/':' \s+/, 2)>>.hash;
+        my %header = @header-lines>>.split(/':' \s+/, 2)>>.hash;
         samewith(:$status-line, :%header, :body($bbuf), |%_);
     }
 

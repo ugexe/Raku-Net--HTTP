@@ -17,6 +17,7 @@ class Net::HTTP::Request does Request {
     method Str { $ = "{self.start-line}{$!nl}{self.header-str}{$!nl}{$!nl}{self.body-str}{self.trailer-str}" }
     method str { self.Str }
 
+    # An over-the-wire representation of the Request
     method raw { with $!nl.ords -> @sep {
         $ = Blob[uint8].new( grep * ~~ Int,
         |self.start-line.ords,
@@ -52,8 +53,4 @@ class Net::HTTP::Request does Request {
     sub header2str(%_) { $ = ~%_.kv.map( -> $f, $v { "{hc ~$f}: {~$v}" }).join("\r\n") }
     sub body2str($_)   { $_ ~~ Blob ?? $_.unpack("A*") !! $_  }
     sub body2raw($_)   { $_ ~~ Blob ?? $_ !! $_ ~~ Str ?? $_.chars ?? Blob[uint8].new($_.ords) !! '' !! '' }
-}
-
-class Net::HTTP::Body {
-
 }
