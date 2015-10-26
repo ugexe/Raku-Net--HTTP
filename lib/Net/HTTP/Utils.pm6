@@ -23,24 +23,23 @@ role IO::Socket::HTTP {
     }
 }
 
-sub ChunkedReader(buf8 $buf) is export {
+sub ChunkedReader(buf8 $buf, :$nl = "\r\n") is export {
     my @data;
     my $i = 0;
-
+    my $sep-size = $nl.ords.elems;
     loop {
         my $size-line;
         loop {
             last if $i == $buf.bytes;
             $size-line ~= $buf.subbuf($i++,1).unpack('A1');
-            last if $size-line ~~ /\r\n/;
+            last if $size-line.ends-with($nl);
         }
-        my $size = :16($size-line.substr(0,*-2));
+        my $size = :16($size-line.substr(0,*-$sep-size));
         last if $size == 0;
         @data.push: $buf.subbuf($i,$size);
-        $i += $size + 2; # 1) \r 2) \n
+        $i += $size + $sep-size;
         last if $i == $buf.bytes;
     }
-
     my buf8 $r = @data.reduce(-> $a is copy, $b { $a ~= $b });
     return $r;
 }

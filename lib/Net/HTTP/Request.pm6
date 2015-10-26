@@ -7,14 +7,13 @@ class Net::HTTP::Request does Request {
     has %.header  is rw;
     has %.trailer is rw;
     has $.body    is rw;
-    has $.nl = "\r\n";
+    has $.nl is rw = "\r\n";
 
     method proto { 'HTTP/1.1' }
-
     method start-line  {$ = "{$!method} {self.path} {self.proto}" }
 
     method Stringy {self.Str}
-    method Str { $ = "{self.start-line}{$!nl}{self.header-str}{$!nl}{$!nl}{self.body-str}{self.trailer-str}" }
+    method Str { $ = "{self.start-line}{$!nl}{self!header-str}{$!nl}{$!nl}{self!body-str}{self!trailer-str}" }
     method str { self.Str }
 
     # An over-the-wire representation of the Request
@@ -42,7 +41,10 @@ class Net::HTTP::Request does Request {
     }
 
 
-    method !header-str  { header2str(%!header)  // ''    }
+    method !header-str  {
+        temp %!header<Host> = self.url.host unless %!header.grep(*.key.lc eq 'host').first(*.value);
+        $ = header2str(%!header)  // ''
+    }
     method !body-str    { body2str($!body)      // ''    }
     method !trailer-str { header2str(%!trailer) // ''    }
 
@@ -50,7 +52,7 @@ class Net::HTTP::Request does Request {
     method !body-raw    { body2raw($!body)                }
     method !trailer-raw { Blob.new(self!trailer-str.ords) }
 
-    sub header2str(%_) { $ = ~%_.kv.map( -> $f, $v { "{hc ~$f}: {~$v}" }).join("\r\n") }
+    sub header2str(%_) { $ = %_.grep(*.value.so).map({ "{hc ~$_.key}: {~$_.value}" }).join("\r\n") }
     sub body2str($_)   { $_ ~~ Blob ?? $_.unpack("A*") !! $_  }
     sub body2raw($_)   { $_ ~~ Blob ?? $_ !! $_ ~~ Str ?? $_.chars ?? Blob[uint8].new($_.ords) !! '' !! '' }
 }

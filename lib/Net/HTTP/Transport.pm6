@@ -1,6 +1,10 @@
 use Net::HTTP::Interfaces;
 use Net::HTTP::Utils;
+
+# defaults
 use Net::HTTP::Dialer;
+use Net::HTTP::Response;
+use Net::HTTP::Request;
 
 # Higher level HTTP transport for creating a custom HTTP::Client
 # similar to ::GET and ::POST but made for reuse (connection caching and other state control)
@@ -11,7 +15,7 @@ class Net::HTTP::Transport does RoundTripper {
     # method proxy { ::('Net::HTTP::URL').new("http://proxy-lord.org") }
 
     method round-trip(Request $req, Response ::RESPONSE = Net::HTTP::Response --> Response) {
-        self!hijack($req);
+        self.hijack($req);
 
         # MAKE REQUEST
         my $socket = self.dial($req) but IO::Socket::HTTP;
@@ -30,13 +34,16 @@ class Net::HTTP::Transport does RoundTripper {
         # to make it easier to use alternative response objects which don't accept a raw buffer
         # of the entire message
 
+        self.hijack($res);
+
         # todo: avoid closing the socket if another request is waiting to use it
         $socket.close() if $res.header<Connection>.defined && $res.header<Connection> ~~ /[:i close]/;
 
         $res;
     }
 
-    method !hijack(Request $req) {
+    # no private multi methods :(
+    multi method hijack(Request $req) {
         my $header := $req.header;
         my $proxy   = self.?proxy;
 
@@ -51,5 +58,13 @@ class Net::HTTP::Transport does RoundTripper {
 
         # default to closed connections
         $header<Connection> //= 'close';
+    }
+    multi method hijack(Response $res) {
+        my $header := $res.header;
+        my $body   := $res.body;
+
+        $body = ChunkedReader($body) if $header.grep(*.key.lc eq 'transfer-encoding').first({$_.value ~~ /[:i chunked]/});
+
+        # content-type and hpack decoding would also go here
     }
 }
