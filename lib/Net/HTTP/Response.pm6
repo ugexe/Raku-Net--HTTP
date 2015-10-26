@@ -1,30 +1,22 @@
 use Net::HTTP::Interfaces;
 use Net::HTTP::Utils;
 
-# Ideally we want to store the entire response as $!raw bytes and make
-# status-line, header, body, etc as methods that read from (while caching
-# their results somehow) $!raw.  While doing this for the sake of the $!body
-# is clear, it should be noted that this should also be done with the headers
-# so that switching between HTTP1 and HTTP2 implementations is easier.
-constant nl = "\r\n\r\n";
+constant crlf = "\r\n";
 
 class Net::HTTP::Response does Response {
     has $.status-line;
     has %.header;
     has $.body is rw;
     has %.trailer;
+    has $.nl;
 
     proto method new(|) {*}
-    multi method new(:$status-line, :%header, :$body, :%trailer, *%_) {
-        # This should be the main constructor for creating response objects as
-        # using all named parameters makes it easier when multiple positionals
-        # could be a Blob (think HTTP2 headers + response body both as :bin)
+    multi method new(:$status-line, :%header, :$body, :%trailer, :$nl = crlf, *%_) {
         self.bless(:$status-line, :%header, :$body, :%trailer, |%_);
     }
-    multi method new(Blob $raw, *%_) {
+    multi method new(Blob $raw, :$nl = crlf, *%_) {
         # Decodes headers to a string, and leaves the body as binary
         # i.e. `::("$?CLASS").new($socket.recv(:bin))`
-        my $nl       = "\r\n";
         my @sep      = "{$nl}{$nl}".ords;
         my $sep-size = @sep.elems;
         my $split-at = $raw.grep(*, :k).first({ $raw[$^a..($^a + $sep-size - 1)] ~~ @sep }, :k);
@@ -39,7 +31,7 @@ class Net::HTTP::Response does Response {
         my $status-line = %_<status-line> // (@header-lines.shift if @header-lines[0] ~~ self!status-line-matcher);
 
         my %header = @header-lines>>.split(/':' \s+/, 2)>>.hash;
-        samewith(:$status-line, :%header, :body($bbuf), |%_);
+        samewith(:$status-line, :%header, :body($bbuf), :$nl, |%_);
     }
 
 

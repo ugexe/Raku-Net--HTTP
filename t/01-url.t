@@ -48,7 +48,7 @@ subtest {
             is $url."$part"(), $expected;
         }
     }
-}, 'Basic: [name] valid absolute urls';
+}, '[name] valid absolute urls';
 
 subtest {
     my %valid = %(
@@ -95,7 +95,7 @@ subtest {
             is $url."$part"(), $expected;
         }
     }
-}, 'Basic: [ipv4] valid absolute urls';
+}, '[ipv4] valid absolute urls';
 
 
 subtest {
@@ -143,4 +143,4 @@ subtest {
             is $url."$part"(), $expected;
         }
     }
-}, 'Basic: [ipv6] valid absolute urls';
+}, '[ipv6] valid absolute urls';
