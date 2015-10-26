@@ -18,10 +18,10 @@ class Net::HTTP::Response does Response {
     multi method new(:$status-line, :%header, :$body, :%trailer, *%_) {
         # This should be the main constructor for creating response objects as
         # using all named parameters makes it easier when multiple positionals
-        # could be a Buf (think HTTP2 headers + response body both as :bin)
+        # could be a Blob (think HTTP2 headers + response body both as :bin)
         self.bless(:$status-line, :%header, :$body, :%trailer, |%_);
     }
-    multi method new(Buf $raw, *%_) {
+    multi method new(Blob $raw, *%_) {
         # An easy way to create a response object for an entire socket read
         # i.e. `::("$?CLASS").new($socket.recv(:bin))`
         my $nl       = "\r\n";
@@ -34,8 +34,8 @@ class Net::HTTP::Response does Response {
             $bbuf = $raw[($data.key+1)..*] and last if @hbuf[*-($sep-size)..*] ~~ @sep;
         }
 
-        @hbuf = @hbuf ?? buf8.new(@hbuf) !! Buf;
-        $bbuf = $bbuf ?? buf8.new($bbuf) !! Buf;
+        @hbuf = @hbuf ?? buf8.new(@hbuf) !! Blob;
+        $bbuf = $bbuf ?? buf8.new($bbuf) !! Blob;
 
         my @headers     = @hbuf>>.unpack('A*').split($nl).grep(*.so);
 

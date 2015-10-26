@@ -16,34 +16,44 @@ class Net::HTTP::Request does Request {
     method Stringy {self.Str}
     method Str { $ = "{self.start-line}{$!nl}{self.header-str}{$!nl}{$!nl}{self.body-str}{self.trailer-str}" }
     method str { self.Str }
-    method header-str  { header2str(%!header)  // ''    }
-    method body-str    { body2str($!body)      // ''    }
-    method trailer-str { header2str(%!trailer) // ''    }
-
 
     method raw { with $!nl.ords -> @sep {
-        $ = Buf[uint8].new( grep * ~~ Int,
+        $ = Blob[uint8].new( grep * ~~ Int,
         |self.start-line.ords,
         |@sep,
-        |self.header-raw.Slip,
+        |self!header-raw.Slip,
         |@sep,
         |@sep,
-        |self.body-raw,
-        |self.trailer-raw,
+        |self!body-raw,
+        |self!trailer-raw,
     ) } }
-    method header-raw  { Buf.new(self.header-str.ords)  }
-    method body-raw    { body2raw($!body)               }
-    method trailer-raw { Buf.new(self.trailer-str.ords) }
 
+    # The `path` part of the start line. Defaults to a relative path.
+    # If you wanted to modify the path to use a proxy you would apply a
+    # role with an alternative path method to the Request object such as:
+    # `$req = Request.new(...) but role { method path { ~$req.url } }`
     method path {
-        my $rel-url;
-        $rel-url ~= $!url.path // '/';
-        with $!url.?query    { $rel-url ~= "?{~$_}" }
-        with $!url.?fragment { $rel-url ~= "#{~$_}" }
+        my $rel-url = '/';
+        if "{$!url.path}"      -> $_ { $rel-url ~= .starts-with('/') ?? .substr(1) !! $_ }
+        if "{$!url.?query}"    -> $_ { $rel-url ~= "?{~$_}" }
+        if "{$!url.?fragment}" -> $_ { $rel-url ~= "#{~$_}" }
         $rel-url;
     }
 
+
+    method !header-str  { header2str(%!header)  // ''    }
+    method !body-str    { body2str($!body)      // ''    }
+    method !trailer-str { header2str(%!trailer) // ''    }
+
+    method !header-raw  { Blob.new(self!header-str.ords)  }
+    method !body-raw    { body2raw($!body)                }
+    method !trailer-raw { Blob.new(self!trailer-str.ords) }
+
     sub header2str(%_) { $ = ~%_.kv.map( -> $f, $v { "{hc ~$f}: {~$v}" }).join("\r\n") }
-    sub body2str($_)   { $_ ~~ Buf ?? $_.unpack("A*") !! $_  }
-    sub body2raw($_)   { $_ ~~ Buf ?? $_ !! $_ ~~ Str ?? $_.chars ?? Buf[uint8].new($_.ords) !! '' !! '' }
+    sub body2str($_)   { $_ ~~ Blob ?? $_.unpack("A*") !! $_  }
+    sub body2raw($_)   { $_ ~~ Blob ?? $_ !! $_ ~~ Str ?? $_.chars ?? Blob[uint8].new($_.ords) !! '' !! '' }
+}
+
+class Net::HTTP::Body {
+
 }

@@ -47,7 +47,7 @@ class Net::HTTP::Transport does RoundTripper {
         $req does role :: { method path {$ = ~$req.url } } if $proxy;
 
         # automatically handle content-length setting
-        $header<Content-Length> = !$req.body ?? 0 !! $req.body ~~ Buf ?? $req.body.bytes !! $req.body.encode.bytes;
+        $header<Content-Length> = !$req.body ?? 0 !! $req.body ~~ Blob ?? $req.body.bytes !! $req.body.encode.bytes;
 
         # default to closed connections
         $header<Connection> //= 'close';
