@@ -7,7 +7,7 @@ use Net::HTTP::Request;
 
 
 subtest {
-    my $url = Net::HTTP::URL.new('https://jigsaw.w3.org/HTTP/ChunkedScript');
+    my $url = Net::HTTP::URL.new('http://jigsaw.w3.org/HTTP/ChunkedScript');
     my $req = Net::HTTP::Request.new(:$url, :method<GET>, header => :User-Agent<perl6-net-http>);
 
     my $transport = Net::HTTP::Transport.new;
