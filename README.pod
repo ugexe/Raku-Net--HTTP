@@ -4,6 +4,8 @@
 
 =head2 Net::HTTP
 
+=for HTML <a href="https://travis-ci.org/ugexe/Perl6-Net--HTTP"><img src="https://travis-ci.org/ugexe/Perl6-Net--HTTP.svg?branch=master"></a>
+
 Interfaces and default implementations for rolling your own http client and/or components
 
 =cut
