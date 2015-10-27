@@ -27,12 +27,9 @@ class Net::HTTP::Transport does RoundTripper {
         # by having it grouped nicely here.
         my $status-line  = $socket.get(:bin).unpack('A*');
         my @header-lines = $socket.lines(:bin).map({$_ or last})>>.unpack('A*');
-        my $body = $socket.recv(:bin);
+        my $body = buf8.new andthen $socket.supply.tap: { $body ~= $_ }
         my %header andthen do { %header{hc(.[0])}.append(.[1]) for @header-lines>>.split(/':' \s+/, 2) }
         my $res  = RESPONSE.new(:$status-line, :$body, :%header);
-        # or just: `my $res = RESPONSE.new($socket.recv(:bin))` but we use the named arguments
-        # to make it easier to use alternative response objects which don't accept a raw buffer
-        # of the entire message
 
         self.hijack($res);
 

@@ -21,9 +21,19 @@ role IO::Socket::HTTP {
             take $line;
         }
     }
+
+    method supply {
+        supply {
+            while $.recv(:bin) -> \data {
+                my $d = buf8.new(data);
+                emit($d);
+            }
+            done();
+        }
+    }
 }
 
-sub ChunkedReader(buf8 $buf, :$nl = "\r\n") is export {
+sub ChunkedReader(Blob $buf, :$nl = "\r\n") is export {
     my @data;
     my $i = 0;
     my $sep-size = $nl.ords.elems;
