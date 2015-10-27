@@ -14,6 +14,12 @@ class Net::HTTP::GET {
     }
     multi method CALL-ME(Request $req, Response ::RESPONSE = Net::HTTP::Response --> Response) {
         state $transport = Net::HTTP::Transport.new;
-        $transport.round-trip($req, RESPONSE);
+
+        # This is to help test the thread-safeness of Transport.
+        # Ultimately the user will be able to just wrap their own 
+        # Request with start { } if they wish, or use as-is for a
+        # normal blocking http request.
+        my $trip = start { $transport.round-trip($req, RESPONSE) }
+        await $trip;
     }
 }

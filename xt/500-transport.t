@@ -1,5 +1,5 @@
 use Test;
-plan 1;
+plan 2;
 
 use Net::HTTP::Transport;
 use Net::HTTP::URL;
@@ -15,3 +15,13 @@ subtest {
 
     is $res.body.decode.lines.grep(/^0/).elems, 1000;
 }, 'Transfer-Encoding: chunked';
+
+subtest {
+    my $url = Net::HTTP::URL.new('http://jigsaw.w3.org/HTTP/ChunkedScript');
+    my $req = Net::HTTP::Request.new(:$url, :method<GET>, header => :User-Agent<perl6-net-http>);
+
+    my $transport = Net::HTTP::Transport.new;
+    my $res = await start { $transport.round-trip($req) };
+
+    is $res.body.decode.lines.grep(/^0/).elems, 1000;
+}, 'Threads: start { $transport.round-trip($req) }';

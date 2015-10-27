@@ -2,6 +2,7 @@ unit module Net::HTTP::Utils;
 
 role IO::Socket::HTTP {
     has $.input-line-separator = "\r\n";
+    has $.keep-alive = 0;
 
     method get(Bool :$bin where True) {
         my @sep      = $.input-line-separator.ords;
@@ -28,6 +29,7 @@ role IO::Socket::HTTP {
                 my $d = buf8.new(data);
                 emit($d);
             }
+            self.close() unless $!keep-alive;
             done();
         }
     }

@@ -8,6 +8,7 @@ use Net::HTTP::Request;
 
 # Higher level HTTP transport for creating a custom HTTP::Client
 # similar to ::GET and ::POST but made for reuse (connection caching and other state control)
+
 class Net::HTTP::Transport does RoundTripper {
     also does Net::HTTP::Dialer;
 
@@ -27,14 +28,15 @@ class Net::HTTP::Transport does RoundTripper {
         # by having it grouped nicely here.
         my $status-line  = $socket.get(:bin).unpack('A*');
         my @header-lines = $socket.lines(:bin).map({$_ or last})>>.unpack('A*');
-        my $body = buf8.new andthen $socket.supply.tap: { $body ~= $_ }
         my %header andthen do { %header{hc(.[0])}.append(.[1]) for @header-lines>>.split(/':' \s+/, 2) }
+
+        # with %header<Content-Length> { $socket.content-length = +$_ }
+        # with %header<Connection>     { $socket.keep-alive //= $res.header<Connection> ~~ /[:i close]/ }
+
+        my $body = buf8.new andthen $socket.supply.tap: { $body ~= $_ }
         my $res  = RESPONSE.new(:$status-line, :$body, :%header);
 
         self.hijack($res);
-
-        # todo: avoid closing the socket if another request is waiting to use it
-        $socket.close() if $res.header<Connection>.defined && $res.header<Connection> ~~ /[:i close]/;
 
         $res;
     }
