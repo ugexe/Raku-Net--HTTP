@@ -23,10 +23,6 @@ class Net::HTTP::Transport does RoundTripper {
         my $socket = self.get-socket($req);
         $socket.write($req.?raw // $req.Str.encode);
 
-        # GET AND PARSE RESPONSE
-        # Realistically the header decoding will go into its own method so that HPACK and other
-        # compressions can be applied as needed. For now (with just HTTP1.1) it helps to visualize
-        # by having it grouped nicely here.
         my $status-line  = $socket.get(:bin).unpack('A*');
         my @header-lines = $socket.lines(:bin).map({$_ or last})>>.unpack('A*');
         my %header andthen do { %header{hc(.[0])}.append(.[1]) for @header-lines>>.split(/':' \s+/, 2) }
@@ -59,18 +55,14 @@ class Net::HTTP::Transport does RoundTripper {
         # automatically handle content-length setting
         $header<Content-Length> = !$req.body ?? 0 !! $req.body ~~ Blob ?? $req.body.bytes !! $req.body.encode.bytes;
 
-        # default to closed connections
         $header<Connection> //= 'keep-alive';
     }
 
     method get-socket(Request $req) {
-        with %!connections{$req.header<Host>} -> $conns {
-            @$conns.grep(*.keep-alive.so).first( -> $conn {
-            });
-            @$conns.grep(*.keep-alive.not).first( -> $conn {
-                # delete me; for debugging purposes
-            });
+        with %!connections{$req.header<Host>.lc} -> $conns {
+            my $reusable = @$conns.grep(*.keep-alive.so).first(*);
+            return $reusable if $reusable;
         }
-        %!connections{$req.header<Host>} = self.dial($req) but IO::Socket::HTTP;
+        %!connections{$req.header<Host>.lc} = self.dial($req) but IO::Socket::HTTP;
     }
 }

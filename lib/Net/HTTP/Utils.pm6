@@ -51,10 +51,11 @@ role IO::Socket::HTTP {
 
     method supply-dechunked {
         supply {
+            my $nl = $!input-line-separator;
+            my @sep = $nl.ords;
+            my $nl-size = $nl.ords.elems;
+
             loop {
-                my $nl = $!input-line-separator;
-                my @sep = $nl.ords;
-                my $nl-size = $nl.ords.elems;
                 my $size-line = self.get(:bin).unpack('A*');
                 my $size      = :16($size-line);
                 last if $size == 0;
