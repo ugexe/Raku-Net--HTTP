@@ -2,58 +2,76 @@ unit module Net::HTTP::Utils;
 
 role IO::Socket::HTTP {
     has $.input-line-separator = "\r\n";
-    has $.keep-alive = 0;
+    has $.keep-alive is rw;
+    has $.content-length is rw;
+    has $.content-read;
+    has $.is-chunked;
 
-    method get(Bool :$bin where True) {
-        my @sep      = $.input-line-separator.ords;
+    my $promise = Promise.new;
+    my $vow     = $promise.vow;
+
+    method reset   { $promise = Promise.new; $vow = $promise.vow; }
+    method result  { $ = await $promise; }
+    method promise { $ = $promise }
+
+    # Currently assumes these are called in a specific order
+    method get(Bool :$bin where True, :$nl = $!input-line-separator, Bool :$chomp = True) {
+        my @sep      = $nl.ords;
         my $sep-size = @sep.elems;
         my @buf;
-
         while $.recv(1, :bin) -> \data {
             @buf.append: data.contents;
+            next unless @buf.elems >= $sep-size;
             last if @buf[*-($sep-size)..*] ~~ @sep;
         }
 
-        @buf ?? buf8.new(@buf[0..*-($sep-size+1)]) !! Buf;
+        @buf ?? ?$chomp ?? buf8.new(@buf[0..*-($sep-size+1)]) !! buf8.new(@buf) !! Buf;
     }
 
-    method lines(Bool :$bin where True) {
-        gather while (my $line = self.get(:bin)).defined {
+    method lines(Bool :$bin where True, :$nl = $!input-line-separator) {
+        gather while (my $line = self.get(:bin, :$nl)).defined {
             take $line;
         }
     }
 
+    # Currently only for use on the body due to content-length
     method supply {
         supply {
             while $.recv(:bin) -> \data {
                 my $d = buf8.new(data);
+                $!content-read += $d.bytes;
                 emit($d);
+                last if $!content-length && $!content-read >= $!content-length;
             }
             self.close() unless $!keep-alive;
+            $vow.keep(self);
             done();
         }
     }
-}
 
-sub ChunkedReader(Blob $buf, :$nl = "\r\n") is export {
-    my @data;
-    my $i = 0;
-    my $sep-size = $nl.ords.elems;
-    loop {
-        my $size-line;
-        loop {
-            last if $i == $buf.bytes;
-            $size-line ~= $buf.subbuf($i++,1).unpack('A1');
-            last if $size-line.ends-with($nl);
+    method supply-dechunked {
+        supply {
+            loop {
+                my $nl = $!input-line-separator;
+                my @sep = $nl.ords;
+                my $nl-size = $nl.ords.elems;
+                my $size-line = self.get(:bin).unpack('A*');
+                my $size      = :16($size-line);
+                last if $size == 0;
+                if $.recv($size, :bin) -> \data {
+                    my $d = buf8.new(data);
+                    $!content-read += $d.bytes;
+                    emit($d);
+                }
+                die "invalid chunk" unless self.recv($nl-size, :bin).contents ~~ @sep;
+                $!content-read += $nl-size;
+                last if $!content-length && $!content-read >= $!content-length;
+            }
+            self.close() unless $!keep-alive;
+            $vow.keep(self);
+            done();
         }
-        my $size = :16($size-line.substr(0,*-$sep-size));
-        last if $size == 0;
-        @data.push: $buf.subbuf($i,$size);
-        $i += $size + $sep-size;
-        last if $i == $buf.bytes;
     }
-    my buf8 $r = @data.reduce(-> $a is copy, $b { $a ~= $b });
-    return $r;
 }
 
 # header-case

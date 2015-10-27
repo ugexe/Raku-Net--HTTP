@@ -19,7 +19,6 @@ class Net::HTTP::GET {
         # Ultimately the user will be able to just wrap their own 
         # Request with start { } if they wish, or use as-is for a
         # normal blocking http request.
-        my $trip = start { $transport.round-trip($req, RESPONSE) }
-        await $trip;
+        $ = await start { $transport.round-trip($req, RESPONSE) }
     }
 }

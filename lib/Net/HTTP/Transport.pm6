@@ -11,6 +11,7 @@ use Net::HTTP::Request;
 
 class Net::HTTP::Transport does RoundTripper {
     also does Net::HTTP::Dialer;
+    has %!connections;
 
     # mix in a proxy role and the host and request target url are set appropriately automatically
     # method proxy { ::('Net::HTTP::URL').new("http://proxy-lord.org") }
@@ -19,7 +20,7 @@ class Net::HTTP::Transport does RoundTripper {
         self.hijack($req);
 
         # MAKE REQUEST
-        my $socket = self.dial($req) but IO::Socket::HTTP;
+        my $socket = self.get-socket($req);
         $socket.write($req.?raw // $req.Str.encode);
 
         # GET AND PARSE RESPONSE
@@ -30,13 +31,16 @@ class Net::HTTP::Transport does RoundTripper {
         my @header-lines = $socket.lines(:bin).map({$_ or last})>>.unpack('A*');
         my %header andthen do { %header{hc(.[0])}.append(.[1]) for @header-lines>>.split(/':' \s+/, 2) }
 
-        # with %header<Content-Length> { $socket.content-length = +$_ }
-        # with %header<Connection>     { $socket.keep-alive //= $res.header<Connection> ~~ /[:i close]/ }
+        with %header<Content-Length> { $socket.content-length = +$_ }
+        with %header<Connection> { $socket.keep-alive //= not @$_ ~~ /[:i close]/ }
 
-        my $body = buf8.new andthen $socket.supply.tap: { $body ~= $_ }
-        my $res  = RESPONSE.new(:$status-line, :$body, :%header);
+        # this chunked conditional should be abstracted away in IO::Socket::HTTP itself, or by supply methods
+        my $body-supply = %header.grep(*.key.lc eq 'transfer-encoding').first({$_.value ~~ /[:i chunked]/})
+            ?? $socket.supply-dechunked !! $socket.supply;
+        my $body = buf8.new andthen $body-supply.tap: { $body ~= $_ }
 
-        self.hijack($res);
+        my $res = RESPONSE.new(:$status-line, :$body, :%header);
+        $res does role { has $.socket = $socket };
 
         $res;
     }
@@ -56,14 +60,17 @@ class Net::HTTP::Transport does RoundTripper {
         $header<Content-Length> = !$req.body ?? 0 !! $req.body ~~ Blob ?? $req.body.bytes !! $req.body.encode.bytes;
 
         # default to closed connections
-        $header<Connection> //= 'close';
+        $header<Connection> //= 'keep-alive';
     }
-    multi method hijack(Response $res) {
-        my $header := $res.header;
-        my $body   := $res.body;
 
-        $body = ChunkedReader($body) if $header.grep(*.key.lc eq 'transfer-encoding').first({$_.value ~~ /[:i chunked]/});
-
-        # content-type and hpack decoding would also go here
+    method get-socket(Request $req) {
+        with %!connections{$req.header<Host>} -> $conns {
+            @$conns.grep(*.keep-alive.so).first( -> $conn {
+            });
+            @$conns.grep(*.keep-alive.not).first( -> $conn {
+                # delete me; for debugging purposes
+            });
+        }
+        %!connections{$req.header<Host>} = self.dial($req) but IO::Socket::HTTP;
     }
 }
