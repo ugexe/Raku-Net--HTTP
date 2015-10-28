@@ -36,8 +36,6 @@ Cookies, forwarding, generic method handler (POST/PUT/etc)
 
 Simple access to the http C<GET> client api.
 
-    > my $response = Net::HTTP::GET("http://httpbin.org/ip", SomeOther::Reponse::Object);
-
 =head3 Net::HTTP::Transport
 
         my $url = Net::HTTP::URL.new($abs-url);
@@ -49,6 +47,7 @@ A high level round-robin implementation that provides connection caching is thre
 For a user-agent level implementation that handles cookies, redirects, auth, etc then use
 a C<Net::HTTP::Client>. Can provide an alternative C<Response> object as an argument.
 
+    > use HTTP::SomethingElse::Response;
     > my \ALTRESPONSE = HTTP::SomethingElse::Response;
     > $transport.round-trip($req, ALTRESPONSE);
 
