@@ -27,12 +27,14 @@ class Net::HTTP::Transport does RoundTripper {
         my @header-lines = $socket.lines(:bin).map({$_ or last})>>.unpack('A*');
         my %header andthen do { %header{hc(.[0])}.append(.[1]) for @header-lines>>.split(/':' \s+/, 2) }
 
-        with %header<Content-Length> { $socket.content-length = +$_ }
-        with %header<Connection> { $socket.keep-alive //= not @$_ ~~ /[:i close]/ }
+        # these belong in a socket specific hijack method
+        with %header<Content-Length> { $socket.content-length = $_[0] }
+        with %header<Connection>     { $socket.keep-alive //= not @$_ ~~ /[:i close]/ }
 
         # this chunked conditional should be abstracted away in IO::Socket::HTTP itself, or by supply methods
         my $body-supply = %header.grep(*.key.lc eq 'transfer-encoding').first({$_.value ~~ /[:i chunked]/})
             ?? $socket.supply-dechunked !! $socket.supply;
+
         my $body = buf8.new andthen $body-supply.tap: { $body ~= $_ }
 
         my $res = RESPONSE.new(:$status-line, :$body, :%header);
