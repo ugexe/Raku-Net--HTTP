@@ -10,7 +10,7 @@ role IO::Socket::HTTP {
     my $promise = Promise.new;
     my $vow     = $promise.vow;
 
-    method reset   { $promise = Promise.new; $vow = $promise.vow; }
+    method reset   { $promise = Promise.new; $vow = $promise.vow; $!content-length = Nil; $!content-read = Nil; }
     method result  { $ = await $promise; }
     method promise { $ = $promise }
 
@@ -37,13 +37,18 @@ role IO::Socket::HTTP {
     # Currently only for use on the body due to content-length
     method supply {
         supply {
-            while $.recv(:bin) -> \data {
-                my $d = buf8.new(data);
-                $!content-read += $d.bytes;
-                emit($d);
-                last if $!content-length && $!content-read >= $!content-length;
+            my $cl = $!content-length;
+            my $cr = $!content-read;
+            loop {
+                if $.recv($cl, :bin) -> \data {
+                    my $d = buf8.new(data);
+                    $cr  += $d.bytes;
+                    emit($d);
+                    last if $cl && $cr >= $cl;
+                }
             }
-            self.close() unless $!keep-alive;
+            self.reset;
+            self.close() unless ?$!keep-alive;
             $vow.keep(self);
             done();
         }
@@ -68,6 +73,7 @@ role IO::Socket::HTTP {
                 $!content-read += $nl-size;
                 last if $!content-length && $!content-read >= $!content-length;
             }
+            self.reset;
             self.close() unless $!keep-alive;
             $vow.keep(self);
             done();
