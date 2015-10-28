@@ -40,6 +40,8 @@ from a string you could do:
 
 But you could also implement rotating proxies, proxy from C<$*ENV>, etc
 
+=back
+
 =head2 Client Implementations
 
 =head3 Net::HTTP::GET
