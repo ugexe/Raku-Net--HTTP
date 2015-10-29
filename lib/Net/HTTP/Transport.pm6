@@ -12,6 +12,7 @@ use Net::HTTP::Request;
 class Net::HTTP::Transport does RoundTripper {
     also does Net::HTTP::Dialer;
     has %!connections;
+    has $!lock = Lock.new;
 
     # mix in a proxy role and the host and request target url are set appropriately automatically
     # method proxy { ::('Net::HTTP::URL').new("http://proxy-lord.org") }
@@ -28,17 +29,13 @@ class Net::HTTP::Transport does RoundTripper {
         my %header andthen do { %header{hc(.[0])}.append(.[1]) for @header-lines>>.split(/':' \s+/, 2) }
 
         # these belong in a socket specific hijack method
-        with %header<Content-Length> { $socket.content-length = $_[0] }
-        with %header<Connection>     { $socket.keep-alive //= not @$_ ~~ /[:i close]/ }
+        with %header<Content-Length>    { $socket.content-length = $_[0] }
+        with %header<Connection>        { $socket.keep-alive = not @$_ ~~ /[:i close]/ }
+        with %header<Transfer-Encoding> { $socket.is-chunked = so @$_.first({$_ ~~ /[:i chunked]/}) }
 
-        # this chunked conditional should be abstracted away in IO::Socket::HTTP itself, or by supply methods
-        my $body-supply = %header.grep(*.key.lc eq 'transfer-encoding').first({$_.value ~~ /[:i chunked]/})
-            ?? $socket.supply-dechunked !! $socket.supply;
-
-        my $body = buf8.new andthen $body-supply.tap: { $body ~= $_ }
+        my $body = buf8.new andthen $socket.supply.tap: { $body ~= $_ }
 
         my $res = RESPONSE.new(:$status-line, :$body, :%header);
-        $res does role { has $.socket = $socket };
 
         $res;
     }
@@ -61,10 +58,15 @@ class Net::HTTP::Transport does RoundTripper {
     }
 
     method get-socket(Request $req) {
-        with %!connections{$req.header<Host>.lc} -> $conns {
-            my $reusable = @$conns.grep(*.keep-alive.so).first(*);
-            return $reusable if $reusable;
-        }
-        %!connections{$req.header<Host>.lc} = self.dial($req) but IO::Socket::HTTP;
+        $!lock.protect({
+            with %!connections{$req.header<Host>.lc} -> $conns {
+                for $conns.grep(*.keep-alive.so) -> $sock {
+                    await Promise.anyof( start { await $sock.promise }, Promise.in(3) );
+                    return $sock if $sock.promise.status;
+                }
+            }
+            %!connections{$req.header<Host>.lc} = self.dial($req) but IO::Socket::HTTP;
+            %!connections{$req.header<Host>.lc};
+        });
     }
 }
