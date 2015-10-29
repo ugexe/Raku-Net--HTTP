@@ -1,5 +1,7 @@
 unit module Net::HTTP::Utils;
 
+
+
 role IO::Socket::HTTP {
     has $.input-line-separator = "\r\n";
     has $.keep-alive is rw;
@@ -43,57 +45,36 @@ role IO::Socket::HTTP {
 
     # Currently only for use on the body due to content-length
     method supply {
-        return self!supply-dechunked if ?self.is-chunked;
         supply {
+            my $ils       = $!input-line-separator;
+            my @sep       = $ils.ords;
+            my $sep-size  = $ils.ords.elems;
+            my $want-size = $!is-chunked ?? :16(self.get(:bin).unpack('A*')) !! $!content-length;
             loop {
+                last if $want-size == 0;
                 my $buffered-size = 0;
                 loop {
-                    my $bytes-needed = ($!content-length - $buffered-size) || last;
+                    my $bytes-needed = ($want-size - $buffered-size) || last;
                     if $.recv($bytes-needed, :bin) -> \data {
                         my $d = buf8.new(data);
                         $!content-read += $buffered-size += $d.bytes;
                         emit($d);
                     }
-                    last if $buffered-size == $!content-length;
+                    last if $buffered-size == $want-size;
                 }
 
-                last if $!content-read >= $!content-length;
-            }
-            self.reset;
-            self.close() unless $!keep-alive;
-            $vow.keep(True);
-            done();
-        }
-    }
-
-    method !supply-dechunked {
-        supply {
-            my $nl = $!input-line-separator;
-            my @sep = $nl.ords;
-            my $nl-size = $nl.ords.elems;
-
-            loop {
-                my $size-line = self.get(:bin).unpack('A*');
-                my $size      = :16($size-line);
-                last if $size == 0;
-
-                my $buffered-size = 0;
-                loop {
-                    my $bytes-needed = ($size - $buffered-size) || last;
-                    if $.recv($bytes-needed, :bin) -> \data {
-                        my $d = buf8.new(data);
-                        $!content-read += $buffered-size += $d.bytes;
-                        emit($d);
-                    }
-                    last if $buffered-size == $size;
+                if ?$!is-chunked {
+                    my @validate = self.recv($sep-size, :bin).contents;
+                    die "Chunked encoding error: expected separator ords '{@sep.perl}' not found (got: {@validate.perl}" unless @validate ~~ @sep;
+                    $!content-read += $sep-size;
+                    $want-size = :16(self.get(:bin).unpack('A*'));
                 }
-
-                die "invalid chunk" unless self.recv($nl-size, :bin).contents ~~ @sep;
-                $!content-read += $nl-size;
-                last if $!content-length && $!content-read >= $!content-length;
+                else {
+                    last if $!content-length >= $!content-read;
+                }
             }
             self.reset;
-            self.close() unless $!keep-alive;
+            self.close() unless ?$!keep-alive;
             $vow.keep(True);
             done();
         }
