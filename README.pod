@@ -11,7 +11,8 @@ Interfaces and default implementations for rolling your own http client and/or c
 =head2 Synopsis
 
     use Net::HTTP::GET;
-    my $response = Net::HTTP::GET("http://httpbin.org/ip", header => :Connection<keep-alive>);
+    my %header   = :Connection<keep-alive>;
+    my $response = Net::HTTP::GET:"http://httpbin.org/ip", :%header);
     say $response.body.decode;
 
 
