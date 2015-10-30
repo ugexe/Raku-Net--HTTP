@@ -59,14 +59,22 @@ class Net::HTTP::Transport does RoundTripper {
 
     method get-socket(Request $req) {
         $!lock.protect({
-            with %!connections{$req.header<Host>.lc} -> $conns {
+            my $connection;
+            my $usable := %!connections{$*THREAD.id}{$req.header<Host>.lc}{$req.url.scheme};
+
+            with $usable -> $conns {
                 for $conns.grep(*.keep-alive.so) -> $sock {
                     await Promise.anyof( start { await $sock.promise }, Promise.in(3) );
-                    return $sock if $sock.promise.status;
+                    $connection = $sock and last if $sock.promise.status;
                 }
             }
-            %!connections{$req.header<Host>.lc} = self.dial($req) but IO::Socket::HTTP;
-            %!connections{$req.header<Host>.lc};
+
+            if not $connection && not $usable {
+                $connection = self.dial($req) but IO::Socket::HTTP;
+                $usable.append($connection);
+            }
+
+            $connection;
         });
     }
 }
