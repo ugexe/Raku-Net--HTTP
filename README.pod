@@ -13,13 +13,13 @@ Interfaces and default implementations for rolling your own http client and/or c
     use Net::HTTP::GET;
     my %header   = :Connection<keep-alive>;
     my $response = Net::HTTP::GET:"http://httpbin.org/ip", :%header);
-    say $response.body.decode;
+    say $response.content;
 
 
     use Net::HTTP::POST;
     my $body     = Buf.new("a=b&c=d&f=".ords);
     my $response = Net::HTTP::POST("http://httpbin.org/post", :$body);
-    say $response.body.decode;
+    say $response.content;
 
 =head2 Why
 
@@ -28,7 +28,7 @@ of having a strong separation of components to allow easy interchangability.
 
 =head2 Coming soon
 
-Cookies, forwarding, multipart posting, content decoding
+Cookies, forwarding, multipart posting
 
 =head2 How do I...?
 

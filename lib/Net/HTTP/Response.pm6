@@ -38,3 +38,67 @@ class Net::HTTP::Response does Response {
     method status-code { $!status-line ~~ self!status-line-matcher andthen return ~$_[0] }
     method !status-line-matcher { $ = rx/^ 'HTTP/' \d [\.\d]? \s (\d\d\d) \s/ }
 }
+
+# I'd like to put this in Net::HTTP::Utils, but there is problem with it being loaded late
+role ResponseBodyDecoder {
+    has $.enc-via-header;
+    has $.enc-via-body;
+    has $.enc-via-bom;
+    has $.enc-via-force;
+    has $!sniffed;
+
+    method content-encoding {
+        return $!sniffed if $!sniffed;
+        self.content;
+        $!sniffed;
+    }
+
+    method content {
+        with self.header<Content-Type> {
+            $!enc-via-header := $_.map({ sniff-content-type($_) }).first(*)
+        }
+        with self.body { $!enc-via-body := sniff-meta($_) }
+        with self.body { $!enc-via-bom  := sniff-bom($_)  }
+
+        try { self.body.decode($!sniffed = $!enc-via-header)   } or\
+        try { self.body.decode($!sniffed = $!enc-via-body)     } or\
+        try { self.body.decode($!sniffed = $!enc-via-bom)      } or\
+        try { $!enc-via-force = $!sniffed = 'utf-8';   self.body.decode('utf-8') } or\
+        try { $!enc-via-force = $!sniffed = 'latin-1'; self.body.unpack("A*")    } or\
+        die "Don't know how to decode this content";
+    }
+
+    sub sniff-content-type(Str $header) {
+        if $header ~~ /[:i 'charset=' <q=[\'\"]>? $<charset>=<[a..z A..Z 0..9 \- \_ \.]>+ $<q>?]/ {
+            my $charset = ~$<charset>;
+            return $charset.lc;
+        }
+    }
+
+    multi sub sniff-meta(Buf $body) {
+        samewith($body.subbuf(0,512).unpack("A*"));
+    }
+    multi sub sniff-meta(Str $body) {
+        if $body ~~ /[:i '<' \s* meta \s* [<-[\>]> .]*? 'charset=' <q=[\'\"]>? $<charset>=<[a..z A..Z 0..9 \- \_ \.]>+ $<q>? .*? '>' ]/ {
+            my $charset = ~$<charset>;
+            return $charset.lc;
+        }
+    }
+
+    multi sub sniff-bom(Str $data) { }
+    multi sub sniff-bom(Blob $data) {
+        given $data.subbuf(0,4).decode('latin-1') {
+            when /^ 'ÿþ␀␀'  / { return 'utf-32-le'     } # no test
+            when /^ '␀␀þÿ'  / { return 'utf-32-be'     } # no test
+            when /^ 'þÿ'   / { return 'utf-16-be'     }
+            when /^ 'ÿþ'   / { return 'utf-16-le'     }
+            when /^ 'ï»¿'  / { return 'utf-8'         }
+            when /^ '÷dL'  / { return 'utf-1'         } # no test
+            when /^ 'Ýsfs' / { return 'utf-ebcdic'    } # no test
+            when /^ '␎þÿ'   / { return 'scsu'          } # no test
+            when /^ 'ûî('  / { return 'bocu-1'        } # no test
+            when /^ '„1•3' / { return 'gb-18030'      } # test marked :todo :(
+            when /^ '+/v' <[89/+]> / { return 'utf-7' }
+        }
+    }
+}
