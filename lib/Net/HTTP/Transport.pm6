@@ -64,12 +64,12 @@ class Net::HTTP::Transport does RoundTripper {
 
             with $usable -> $conns {
                 for $conns.grep(*.keep-alive.so) -> $sock {
-                    await Promise.anyof( start { await $sock.promise }, Promise.in(3) );
+                    # this needs a timeout, but spawning another thread to do it causes problems
                     $connection = $sock and last if $sock.promise.status;
                 }
             }
 
-            if not $connection && not $usable {
+            if $connection.not && $usable.not {
                 $connection = self.dial($req) but IO::Socket::HTTP;
                 $usable.append($connection);
             }

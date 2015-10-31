@@ -28,7 +28,7 @@ of having a strong separation of components to allow easy interchangability.
 
 =head2 Coming soon
 
-Cookies, forwarding, multipart posting
+Cookies, multipart posting
 
 =head2 How do I...?
 

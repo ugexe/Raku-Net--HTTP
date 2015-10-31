@@ -15,6 +15,6 @@ class Net::HTTP::POST {
     }
     multi method CALL-ME(Request $req, Response ::RESPONSE = Net::HTTP::Response --> Response) {
         state $transport = Net::HTTP::Transport.new;
-        $ = await start { $transport.round-trip($req, RESPONSE) but ResponseBodyDecoder; }
+        $transport.round-trip($req, RESPONSE) but ResponseBodyDecoder;
     }
 }
