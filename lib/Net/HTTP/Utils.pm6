@@ -40,7 +40,6 @@ role IO::Socket::HTTP {
         }
     }
 
-
     # Currently only for use on the body due to content-length
     method supply {
         supply {

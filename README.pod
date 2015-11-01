@@ -12,7 +12,7 @@ Interfaces and default implementations for rolling your own http client and/or c
 
     use Net::HTTP::GET;
     my %header   = :Connection<keep-alive>;
-    my $response = Net::HTTP::GET:"http://httpbin.org/ip", :%header);
+    my $response = Net::HTTP::GET("http://httpbin.org/ip", :%header);
     say $response.content;
 
 

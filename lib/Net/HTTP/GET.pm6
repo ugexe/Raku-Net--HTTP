@@ -8,9 +8,12 @@ our $transport = Net::HTTP::Transport.new;
 
 class Net::HTTP::GET {
     proto method CALL-ME(|) {*}
-    multi method CALL-ME(Str $abs-url, :$body?, |c --> Response) {
+    multi method CALL-ME(Str $abs-url, :$body, :%header, |c --> Response) {
         my $req = self!url2req($abs-url);
-        $req.body = $body;
+        temp %header<Connection> //= <keep-alive>;
+        temp %header<User-Agent> //= <perl6-net-http>;
+        $req.body   = $body;
+        $req.header = %header;
         samewith($req, |c);
     }
     multi method CALL-ME(Request $req, Response ::RESPONSE = Net::HTTP::Response --> Response) {
@@ -23,9 +26,12 @@ class Net::HTTP::GET {
         given $response.status-code {
             when /^3\d\d$/ {
                 # make an absolute url. this should be incorporated into Net::HTTP::URL
-                my $url = ~$response.header<Location>.first(*.so);
-                $url = Net::HTTP::URL.new: "{$req.url.scheme}://{$req.url.host}{$url}" unless $url ~~ /\w+? \: \/ \//;
-                $response = self!round-trip($req.new(:$url, :method<GET>, :body($req.body)), RESPONSE);
+                with $response.header<Location>.first(*.so) -> $path is copy {
+                    my $url = Net::HTTP::URL.new: $path !~~ /^\w+ \: \/ \//
+                        ?? "{$req.url.scheme}://{$req.url.host}{'/' unless $path.starts-with('/')}{$path}"
+                        !! $path;
+                    $response = self!round-trip($req.new(:$url, :method<GET>, :body($req.body)), RESPONSE);
+                }
             }
         }
         $response;
@@ -33,7 +39,7 @@ class Net::HTTP::GET {
 
     method !url2req($url-str --> Request) {
         my $url = Net::HTTP::URL.new($url-str);
-        my $req = Net::HTTP::Request.new: :$url, :method<GET>,
-            header => :Connection<keep-alive>, :User-Agent<perl6-net-http>;
+        my $req = Net::HTTP::Request.new: :$url, :method<GET>;
+
     }
 }
