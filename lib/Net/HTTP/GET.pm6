@@ -9,7 +9,8 @@ our $transport = Net::HTTP::Transport.new;
 class Net::HTTP::GET {
     proto method CALL-ME(|) {*}
     multi method CALL-ME(Str $abs-url, :$body, :%header, |c --> Response) {
-        my $req = self!url2req($abs-url);
+        my $url = Net::HTTP::URL.new($abs-url);
+        my $req = Net::HTTP::Request.new: :$url, :method<GET>;
         temp %header<Connection> //= <keep-alive>;
         temp %header<User-Agent> //= <perl6-net-http>;
         $req.body   = $body;
@@ -30,16 +31,11 @@ class Net::HTTP::GET {
                     my $url = Net::HTTP::URL.new: $path !~~ /^\w+ \: \/ \//
                         ?? "{$req.url.scheme}://{$req.url.host}{'/' unless $path.starts-with('/')}{$path}"
                         !! $path;
+                    my $next-req = $req.new(:$url, :method<GET>, :body($req.body), :header($req.header));
                     $response = self!round-trip($req.new(:$url, :method<GET>, :body($req.body)), RESPONSE);
                 }
             }
         }
         $response;
-    }
-
-    method !url2req($url-str --> Request) {
-        my $url = Net::HTTP::URL.new($url-str);
-        my $req = Net::HTTP::Request.new: :$url, :method<GET>;
-
     }
 }
