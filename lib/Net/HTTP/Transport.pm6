@@ -65,7 +65,14 @@ class Net::HTTP::Transport does RoundTripper {
             with $usable -> $conns {
                 for $conns.grep(*.keep-alive.so) -> $sock {
                     # this needs a timeout, but spawning another thread to do it causes problems
-                    $connection = $sock and last if $sock.promise.status;
+                    await $sock.promise;
+
+                    # crazy attempt to only assign sockets that are still open (should be tied into $sock.promise)
+                    try {
+                        $sock.read(0);
+                        # if the socket is closed it will give a different error for read(0)
+                        CATCH { when /'Out of range'/ { $connection = $sock and last; } }
+                    }
                 }
             }
 

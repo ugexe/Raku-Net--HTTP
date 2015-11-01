@@ -1,7 +1,5 @@
 unit module Net::HTTP::Utils;
 
-
-
 role IO::Socket::HTTP {
     has $.input-line-separator = "\r\n";
     has $.keep-alive is rw;
@@ -25,9 +23,9 @@ role IO::Socket::HTTP {
     # Currently assumes these are called in a specific order
     method get(Bool :$bin where True, :$nl = $!input-line-separator, Bool :$chomp = True) {
         my @sep      = $nl.ords;
-        my $sep-size = @sep.elems;
+        my $sep-size = +@sep;
         my @buf;
-        while (my $data = self.recv(1, :bin)).defined {
+        while (my $data = $.recv(1, :bin)).defined {
             @buf.append: $data.contents;
             next unless @buf.elems >= $sep-size;
             last if @buf[*-($sep-size)..*] ~~ @sep;
@@ -37,7 +35,7 @@ role IO::Socket::HTTP {
     }
 
     method lines(Bool :$bin where True, :$nl = $!input-line-separator) {
-        gather while (my $line = self.get(:bin, :$nl)).defined {
+        gather while (my $line = $.get(:bin, :$nl)).defined {
             take $line;
         }
     }
@@ -75,13 +73,12 @@ role IO::Socket::HTTP {
             }
             self.reset;
             self.close() unless ?$!keep-alive;
-            $vow.keep(True);
-            done();
+            $vow.keep(True) andthen done();
         }
     }
 }
 
 # header-case
 sub hc(Str:D $str) is export {
-    $str.split("-")>>.wordcase.join("-")
+    $str.split("-").map(*.wordcase).join("-")
 }
