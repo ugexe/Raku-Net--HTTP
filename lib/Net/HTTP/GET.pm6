@@ -10,12 +10,13 @@ class Net::HTTP::GET {
     proto method CALL-ME(|) {*}
     multi method CALL-ME(Str $abs-url, :$body, :%header, |c --> Response) {
         my $url = Net::HTTP::URL.new($abs-url);
-        my $req = Net::HTTP::Request.new: :$url, :method<GET>;
-        temp %header<Connection> //= <keep-alive>;
-        temp %header<User-Agent> //= <perl6-net-http>;
-        $req.body   = $body;
-        $req.header = %header;
-        samewith($req, |c);
+        with Net::HTTP::Request.new(:$url, :method<GET>) -> $req {
+            temp %header<Connection> //= <keep-alive>;
+            temp %header<User-Agent> //= <perl6-net-http>;
+            $req.body   = $body || Buf.new;
+            $req.header = %header;
+            samewith($req, |c);
+        }
     }
     multi method CALL-ME(Request $req, Response ::RESPONSE = Net::HTTP::Response --> Response) {
         self!round-trip($req, RESPONSE);
@@ -32,7 +33,7 @@ class Net::HTTP::GET {
                         ?? "{$req.url.scheme}://{$req.url.host}{'/' unless $path.starts-with('/')}{$path}"
                         !! $path;
                     my $next-req = $req.new(:$url, :method<GET>, :body($req.body), :header($req.header));
-                    $response = self!round-trip($req.new(:$url, :method<GET>, :body($req.body)), RESPONSE);
+                    $response = self!round-trip($next-req, RESPONSE);
                 }
             }
         }

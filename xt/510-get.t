@@ -1,5 +1,5 @@
 use Test;
-plan 2;
+plan 3;
 
 use Net::HTTP::GET;
 
@@ -12,6 +12,7 @@ subtest {
     my $response400 = Net::HTTP::GET($url ~ '/status/400');
     is $response400.status-code, "400";
 }, "Basic";
+
 
 subtest {
     my $url = "http://httpbin.org/redirect/3";
@@ -26,3 +27,24 @@ subtest {
     my $abs-response = Net::HTTP::GET($abs-url);
     is $abs-response.status-code, 200, 'Status code of final absolute redirect is 200';
 }, "Redirect";
+
+
+subtest {
+    unless Net::HTTP::Dialer.?can-ssl {
+        print("ok 3 - # Skip: Can't do SSL. Is IO::Socket::SSL available?\n");
+        return;
+    }
+
+    # only absolute ssl redirect works??
+    my $https2https-url = "https://httpbin.org/absolute-redirect/2";
+    my $https2https-response = Net::HTTP::GET($https2https-url);
+    is $https2https-response.status-code, 200, 'Status code of final redirect is 200';
+
+# look into keep-alive sockets when they get redirected to https... maybe
+# those sockets shouldnt be alive still?
+
+    # this works once in a blue moon, but not usually:
+    # my $http2https-url = "http://github.com/";
+    # my $http2https-response = Net::HTTP::GET($http2https-url);
+    # is $http2https-response.status-code, 200, 'Status code of final redirect is 200';
+}, 'Redirect with SSL';

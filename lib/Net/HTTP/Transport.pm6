@@ -21,19 +21,19 @@ class Net::HTTP::Transport does RoundTripper {
         self.hijack($req);
 
         # MAKE REQUEST
-        my $socket = self.get-socket($req);
+        my $socket := $.get-socket($req);
         $socket.write($req.?raw // $req.Str.encode);
 
-        my $status-line  = $socket.get(:bin).unpack('A*');
-        my @header-lines = $socket.lines(:bin).map({$_ or last})>>.unpack('A*');
+        my $status-line   = $socket.get(:bin).unpack('A*');
+        my @header-lines  = $socket.lines(:bin).map({$_ or last})>>.unpack('A*');
         my %header andthen do { %header{hc(.[0])}.append(.[1]) for @header-lines>>.split(/':' \s+/, 2) }
 
-        # these belong in a socket specific hijack method
-        with %header<Content-Length>    { $socket.content-length = $_[0] }
-        with %header<Connection>        { $socket.keep-alive = not @$_ ~~ /[:i close]/ }
-        with %header<Transfer-Encoding> { $socket.is-chunked = so @$_.first({$_ ~~ /[:i chunked]/}) }
-
-        my $body = buf8.new andthen $socket.supply.tap: { $body ~= $_ }
+        my $body    = buf8.new;
+        my $buffer  = do with %header<Content-Length> { +$_.[0] } // Inf;
+        my $chunked = do with %header<Transfer-Encoding> { .any ~~ /[:i chunked]/ } ?? True !! False;
+        $socket.supply(:$buffer, :$chunked).tap: { $body ~= $_ }, done => {
+            with %header<Connection> { .any ~~ /[:i close]/ ?? $socket.close !! $socket.release }
+        }
 
         my $res = RESPONSE.new(:$status-line, :$body, :%header);
 
@@ -60,25 +60,32 @@ class Net::HTTP::Transport does RoundTripper {
     method get-socket(Request $req) {
         $!lock.protect({
             my $connection;
-            my $usable := %!connections{$*THREAD.id}{$req.header<Host>.lc}{$req.url.scheme};
 
-            with $usable -> $conns {
-                for $conns.grep(*.keep-alive.so) -> $sock {
-                    # this needs a timeout, but spawning another thread to do it causes problems
-                    await $sock.promise;
+            # index connections by:
+            my $thread-id = $*THREAD.id;
+            my $scheme    = $req.url.scheme;
+            my $host      = $req.header<Host>;
+            my $usable   := %!connections{$thread-id}{$host}{$scheme};
 
-                    # crazy attempt to only assign sockets that are still open (should be tied into $sock.promise)
-                    try {
-                        $sock.read(0);
-                        # if the socket is closed it will give a different error for read(0)
-                        CATCH { when /'Out of range'/ { $connection = $sock and last; } }
-                    }
+            if $usable -> $conns {
+                for $conns.grep(*.closing.not) -> $sock {
+                    next unless $sock.promise.result;
+                    next if $sock.promise.status ~~ Broken;
+                    $sock.init ?? $connection := $sock !! die "somethin is fukx";
                 }
             }
 
             if $connection.not && $usable.not {
                 $connection = self.dial($req) but IO::Socket::HTTP;
-                $usable.append($connection);
+                $connection.init;
+
+                unless $req.header<Connection>.grep(*.lc eq 'close') {
+                    $usable.append($connection);
+                }
+            }
+
+            if $req.header<Connection>.grep(*.lc eq 'close') {
+                $connection.closing = True;
             }
 
             $connection;
