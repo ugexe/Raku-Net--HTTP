@@ -19,24 +19,25 @@ class Net::HTTP::GET {
         }
     }
     multi method CALL-ME(Request $req, Response ::RESPONSE = Net::HTTP::Response --> Response) {
-        self!round-trip($req, RESPONSE);
+        self.round-trip($req, RESPONSE);
     }
 
     # a round-tripper that follow redirects
-    method !round-trip($req, Response ::RESPONSE) {
-        my $response = $transport.round-trip($req, RESPONSE) but ResponseBodyDecoder;
+    proto method round-trip(|) {*}
+    multi method round-trip($req, Response ::RESPONSE) {
+        my $response = $transport.round-trip($req, RESPONSE);
         given $response.status-code {
             when /^3\d\d$/ {
                 # make an absolute url. this should be incorporated into Net::HTTP::URL
-                with $response.header<Location>.first(*.so) -> $path is copy {
+                with $response.header<Location>.first(*.so) -> $path {
                     my $url = Net::HTTP::URL.new: $path !~~ /^\w+ \: \/ \//
                         ?? "{$req.url.scheme}://{$req.url.host}{'/' unless $path.starts-with('/')}{$path}"
                         !! $path;
-                    my $next-req = $req.new(:$url, :method<GET>, :body($req.body), :header($req.header));
-                    $response = self!round-trip($next-req, RESPONSE);
+                    my $next-req := $req.new(:$url, :method<GET>, :body($req.body), :header($req.header));
+                    $response = samewith($next-req, RESPONSE);
                 }
             }
         }
-        $response;
+        $response does ResponseBodyDecoder;
     }
 }

@@ -71,22 +71,18 @@ class Net::HTTP::Transport does RoundTripper {
                 for $conns.grep(*.closing.not) -> $sock {
                     next unless $sock.promise.result;
                     next if $sock.promise.status ~~ Broken;
-                    $sock.init ?? $connection := $sock !! die "somethin is fukx";
+                    $connection = $sock.init;
                 }
             }
 
             if $connection.not && $usable.not {
-                $connection = self.dial($req) but IO::Socket::HTTP;
+                $connection = $.dial($req) but IO::Socket::HTTP;
                 $connection.init;
 
-                unless $req.header<Connection>.grep(*.lc eq 'close') {
-                    $usable.append($connection);
-                }
+                $usable.append($connection) unless $req.header<Connection>.any ~~ /[:i close]/;
             }
 
-            if $req.header<Connection>.grep(*.lc eq 'close') {
-                $connection.closing = True;
-            }
+            $connection.closing = True if $req.header<Connection>.any ~~ /[:i close]/;
 
             $connection;
         });
