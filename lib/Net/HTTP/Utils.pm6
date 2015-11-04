@@ -45,7 +45,7 @@ role IO::Socket::HTTP {
                             $buffered-size += $data.bytes;
                             emit($data);
                         }
-                        last if $buffered-size == $bytes-read | 0;
+                        last if $buffered-size == $bytes-needed | 0;
                     }
                 }
 
