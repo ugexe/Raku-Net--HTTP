@@ -54,7 +54,7 @@ role ResponseBodyDecoder {
 
     method content(Bool :$force) {
         with self.header<Content-Type> {
-            $!enc-via-header := $_.map({ sniff-content-type($_) }).first(*)
+            $!enc-via-header := .map({ sniff-content-type($_) }).first(*)
         }
         with self.body { $!enc-via-body := sniff-meta($_) }
         with self.body { $!enc-via-bom  := sniff-bom($_)  }
@@ -70,7 +70,7 @@ role ResponseBodyDecoder {
             try { $!enc-via-force = $!sniffed = 'latin-1'; return self.body.unpack("A*")    }
         }
 
-        die "Don't know how to decode this content";
+        die "Don't know how to decode this content; call with the `:force` argument to try harder";
     }
 
     sub sniff-content-type(Str $header) {
