@@ -52,18 +52,24 @@ role ResponseBodyDecoder {
         $!sniffed;
     }
 
-    method content {
+    method content(Bool :$force) {
         with self.header<Content-Type> {
             $!enc-via-header := $_.map({ sniff-content-type($_) }).first(*)
         }
         with self.body { $!enc-via-body := sniff-meta($_) }
         with self.body { $!enc-via-bom  := sniff-bom($_)  }
 
-        try { self.body.decode($!sniffed = $!enc-via-header)   } or\
-        try { self.body.decode($!sniffed = $!enc-via-body)     } or\
-        try { self.body.decode($!sniffed = $!enc-via-bom)      } or\
-        try { $!enc-via-force = $!sniffed = 'utf-8';   self.body.decode('utf-8') } or\
-        try { $!enc-via-force = $!sniffed = 'latin-1'; self.body.unpack("A*")    } or\
+        # try our informed guess
+        with $!enc-via-header { try { return self.body.decode($!sniffed = $_) } }
+        with $!enc-via-body   { try { return self.body.decode($!sniffed = $_) } }
+        with $!enc-via-bom    { try { return self.body.decode($!sniffed = $_) } }
+
+        # fuck it take a wild guess
+        if ?$force {
+            try { $!enc-via-force = $!sniffed = 'utf-8';   return self.body.decode('utf-8') }
+            try { $!enc-via-force = $!sniffed = 'latin-1'; return self.body.unpack("A*")    }
+        }
+
         die "Don't know how to decode this content";
     }
 
