@@ -63,10 +63,9 @@ class Net::HTTP::Transport does RoundTripper {
             my $connection;
 
             # index connections by:
-            my $thread-id = $*THREAD.id;
             my $scheme    = $req.url.scheme;
             my $host      = $req.header<Host>;
-            my $usable   := %!connections{$thread-id}{$host}{$scheme};
+            my $usable   := %!connections{$*THREAD}{$host}{$scheme};
 
             if $usable -> $conns {
                 for $conns.grep(*.closing.not) -> $sock {
