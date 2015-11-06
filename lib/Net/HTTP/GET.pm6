@@ -25,7 +25,7 @@ class Net::HTTP::GET {
     # a round-tripper that follow redirects
     proto method round-trip(|) {*}
     multi method round-trip($req, Response ::RESPONSE) {
-        my $response = $transport.round-trip($req, RESPONSE);
+        my $response = $transport.round-trip($req, RESPONSE) but ResponseBodyDecoder;
         given $response.status-code {
             when /^3\d\d$/ {
                 # make an absolute url. this should be incorporated into Net::HTTP::URL
@@ -38,6 +38,6 @@ class Net::HTTP::GET {
                 }
             }
         }
-        $response does ResponseBodyDecoder;
+        $response;
     }
 }

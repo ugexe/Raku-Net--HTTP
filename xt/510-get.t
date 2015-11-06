@@ -38,7 +38,6 @@ subtest {
     my $https2https-response = Net::HTTP::GET($https2https-url);
     is $https2https-response.status-code, 200, 'Status code of final redirect is 200';
 
-    # this works sometimes, othertimes the socket mysteriously disappears
     my $http2https-url = "http://github.com";
     my $http2https-response = Net::HTTP::GET($http2https-url);
     is $http2https-response.status-code, 200, 'Status code of final redirect is 200';
