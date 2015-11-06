@@ -36,9 +36,13 @@ class Net::HTTP::Request does Request {
     # `$req = Request.new(...) but role { method path { ~$req.url } }`
     method path {
         my $rel-url = '/';
-        if "{$!url.path}"      -> $p { $rel-url ~= $p.starts-with('/') ?? $p.substr(1) !! $p }
-        if "{$!url.?query}"    -> $q { $rel-url ~= "?{~$q}" }
-        if "{$!url.?fragment}" -> $f { $rel-url ~= "#{~$f}" }
+        my sub pathify {
+            my $path  = $^a.starts-with('/') ?? $^a.substr(1) !! $^a;
+            $ = $path.chars > 1 && $path.ends-with('/') ?? $path.chop !! $path;
+        }
+        if "{$!url.path}"      -> $p { $rel-url ~= pathify($p) }
+        if "{$!url.?query}"    -> $q { $rel-url ~= "?{~$q}"    }
+        if "{$!url.?fragment}" -> $f { $rel-url ~= "#{~$f}"    }
         $rel-url;
     }
 

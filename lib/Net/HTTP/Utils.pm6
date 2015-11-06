@@ -16,12 +16,12 @@ role IO::Socket::HTTP {
             $buf ~= $.recv(1, :bin);
             last if $buf.tail($sep-size) ~~ @sep;
         }
-        ?$chomp ?? $buf.subbuf(0, $buf.elems - $sep-size) !! $buf;
+        $ = ?$chomp ?? $buf.subbuf(0, $buf.elems - $sep-size) !! $buf;
     }
 
     method lines(Bool :$bin where True) {
-        gather while $.get(:bin) -> \data {
-            take data;
+        gather while (my $data = $.get(:bin)).DEFINITE {
+            take $data;
         }
     }
 
@@ -29,12 +29,11 @@ role IO::Socket::HTTP {
     method supply(:$buffer = Inf, Bool :$chunked = False) {
         # to make it easier in the transport itself we will simply
         # ignore $buffer if ?$chunked
-        supply {
-            my $bytes-read = 0;
-            my @sep        = $CRLF.contents;
-            my $sep-size   = @sep.elems;
-            my $want-size  = ($chunked ?? :16(self.get(:bin).unpack('A*')) !! $buffer) || 0;
-
+        my $bytes-read = 0;
+        my @sep        = $CRLF.contents;
+        my $sep-size   = @sep.elems;
+        my $want-size  = ($chunked ?? :16(self.get(:bin).unpack('A*')) !! $buffer) || 0;
+        $ = Supply.on-demand(-> $supply {
             loop {
                 my $buffered-size = 0;
                 if $want-size {
@@ -43,7 +42,7 @@ role IO::Socket::HTTP {
                         if $.recv($bytes-needed, :bin) -> $data {
                             $bytes-read    += $data.bytes;
                             $buffered-size += $data.bytes;
-                            emit($data);
+                            $supply.emit($data);
                         }
                         last if $buffered-size == $bytes-needed | 0;
                     }
@@ -55,9 +54,11 @@ role IO::Socket::HTTP {
                     $bytes-read += $sep-size;
                     $want-size = :16(self.get(:bin).unpack('A*'));
                 }
-                done() if $want-size == 0 || $bytes-read >= $buffer || $buffered-size == 0;
+                last if $want-size == 0 || $bytes-read >= $buffer || $buffered-size == 0;
             }
-        }
+
+            $supply.done();
+        });
     }
 
     method init {

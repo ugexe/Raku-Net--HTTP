@@ -34,7 +34,7 @@ class Net::HTTP::GET {
                         ?? "{$req.url.scheme}://{$req.url.host}{'/' unless $path.starts-with('/')}{$path}"
                         !! $path;
                     my $next-req := $req.new(:$url, :method<GET>, :body($req.body), :header($req.header));
-                    $response = samewith($next-req, RESPONSE);
+                    $response = self.round-trip($next-req, RESPONSE);
                 }
             }
         }

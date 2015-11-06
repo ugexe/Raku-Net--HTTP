@@ -25,6 +25,7 @@ class Net::HTTP::Transport does RoundTripper {
         $socket.write($req.?raw // $req.Str.encode);
 
         my $status-line   = $socket.get(:bin).unpack('A*');
+
         my @header-lines  = $socket.lines(:bin).map({$_ or last})>>.unpack('A*');
         my %header andthen do { %header{hc(.[0])}.append(.[1]) for @header-lines>>.split(/':' \s+/, 2) }
 
@@ -75,7 +76,7 @@ class Net::HTTP::Transport does RoundTripper {
                 }
             }
 
-            if $connection.not && $usable.not {
+            if $connection.not {
                 $connection = $.dial($req) but IO::Socket::HTTP;
                 $connection.init;
 
