@@ -6,6 +6,7 @@ my $CRLF = Buf.new(13, 10);
 role IO::Socket::HTTP {
     has $.closing is rw = False;
     has $.promise = Promise.new;
+    has $!lock = Lock.new;
 
     # Currently assumes these are called in a specific order per request
     method get(Bool :$bin where True, Bool :$chomp = True) {
@@ -62,15 +63,14 @@ role IO::Socket::HTTP {
     }
 
     method init {
-        state $lock += 1;
-        if $!promise.status ~~ Kept && $lock == 1 {
-            unless $.closed {
-                $!promise = Promise.new;
-                $lock = 0;
-                return self;
+        $!lock.protect({
+            if $!promise.status ~~ Kept {
+                unless $.closed {
+                    $!promise = Promise.new;
+                }
             }
-        }
-        $lock--;
+            self;
+        });
     }
 
     method release {

@@ -70,9 +70,10 @@ class Net::HTTP::Transport does RoundTripper {
 
             if $usable -> $conns {
                 for $conns.grep(*.closing.not) -> $sock {
-                    next unless $sock.promise.result;
+                    # don't wait too long for a new socket before moving on
+                    next unless await Promise.anyof( $sock.promise, start { $ = Promise.in(3); False });
                     next if $sock.promise.status ~~ Broken;
-                    $connection = $sock.init;
+                    last if $connection = $sock.init;
                 }
             }
 
