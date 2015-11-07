@@ -29,7 +29,8 @@ class Net::HTTP::Response does Response {
         # Otherwise we will use the first line of @headers if it matches a status-line like string.
         my $status-line = %_<status-line> // (@header-lines.shift if @header-lines[0] ~~ self!status-line-matcher);
 
-        my %header = @header-lines>>.split(/':' \s+/, 2)>>.hash;
+        my %header andthen do { %header{.[0]}.append(.[1].trim-leading) for @header-lines>>.split(':', 2) }
+
         samewith(:$status-line, :%header, :body($bbuf), |%_);
     }
 

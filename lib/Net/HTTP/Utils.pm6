@@ -40,7 +40,8 @@ role IO::Socket::HTTP {
                 if $want-size {
                     loop {
                         my $bytes-needed = ($want-size - $buffered-size) || last;
-                        if $.recv($bytes-needed, :bin) -> $data {
+                        if (my $data = $.recv($bytes-needed, :bin)).defined {
+                            last unless ?$data;
                             $bytes-read    += $data.bytes;
                             $buffered-size += $data.bytes;
                             $supply.emit($data);

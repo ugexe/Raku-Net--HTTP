@@ -27,7 +27,7 @@ class Net::HTTP::Transport does RoundTripper {
         my $status-line   = $socket.get(:bin).unpack('A*');
 
         my @header-lines  = $socket.lines(:bin).map({$_ or last})>>.unpack('A*');
-        my %header andthen do { %header{hc(.[0])}.append(.[1]) for @header-lines>>.split(/':' \s+/, 2) }
+        my %header andthen do { %header{hc(.[0])}.append(.[1].trim-leading) for @header-lines>>.split(':', 2) }
 
         my $body    = buf8.new;
         my $buffer  = do with %header<Content-Length> { +$_.[0] } // Inf;
