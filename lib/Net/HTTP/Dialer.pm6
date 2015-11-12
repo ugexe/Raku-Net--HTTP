@@ -1,9 +1,9 @@
 use Net::HTTP::Interfaces;
 
-try require IO::Socket::SSL;
-
 # Get a scheme appropriate connected socket
 role Net::HTTP::Dialer does Dialer {
+    (try require IO::Socket::SSL) // $! = Nil;
+
     method can-ssl { state $ssl = !::("IO::Socket::SSL").isa(Failure) }
     method dial(Request $req) {
         my $scheme = $req.url.scheme // 'http';
