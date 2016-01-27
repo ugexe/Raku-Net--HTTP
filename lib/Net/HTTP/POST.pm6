@@ -6,10 +6,12 @@ use Net::HTTP::URL;
 
 class Net::HTTP::POST {
     proto method CALL-ME(|) {*}
-    multi method CALL-ME(Str $abs-url, :$body?, |c --> Response) {
+    multi method CALL-ME(Str $abs-url, :%header is copy, :$body?, |c --> Response) {
         my $url = Net::HTTP::URL.new($abs-url);
-        my $req = Net::HTTP::Request.new: :$url, :$body, :method<POST>,
-            header => :Connection<keep-alive>, :User-Agent<perl6-net-http>;
+        my $req = Net::HTTP::Request.new: :$url, :$body, :method<POST>, :User-Agent<perl6-net-http>;
+        %header<Connection> = 'keep-alive', 
+        $req.header = %header;
+
 
         samewith($req, |c);
     }
