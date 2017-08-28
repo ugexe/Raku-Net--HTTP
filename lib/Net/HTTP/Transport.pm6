@@ -10,7 +10,6 @@ use experimental :pack;
 
 # Higher level HTTP transport for creating a custom HTTP::Client
 # similar to ::GET and ::POST but made for reuse (connection caching and other state control)
-
 class Net::HTTP::Transport does RoundTripper {
     also does Net::HTTP::Dialer;
     has %!connections;
@@ -64,10 +63,7 @@ class Net::HTTP::Transport does RoundTripper {
         $!lock.protect({
             my $connection;
 
-            # index connections by:
-            my $scheme    = $req.url.scheme;
-            my $host      = $req.header<Host>;
-            my $usable   := %!connections{$*THREAD}{$host}{$scheme};
+            my $usable := %!connections{$*THREAD}{~$req.header<Host>}{~$req.url.scheme};
 
             if $usable -> $conns {
                 for $conns.grep(*.closing.not) -> $sock {

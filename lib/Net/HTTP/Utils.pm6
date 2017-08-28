@@ -53,7 +53,7 @@ role IO::Socket::HTTP {
                 if ?$chunked and $.recv($CRLF-BYTES, :bin) -> $chunked-crlf {
                     unless $chunked-crlf eq $CRLF {
                         die "Chunked encoding error: expected separator ords "
-                        ~   "'{$CRLF.contents}' not found (got: {$chunked-crlf.contents})";
+                            ~ $CRLF.contents ~ " not found. Got: " ~ $chunked-crlf.contents;
                     }
                     $bytes-read += $chunked-crlf.bytes;
                     $want-size = :16(self.get(:bin).decode('latin-1'));
