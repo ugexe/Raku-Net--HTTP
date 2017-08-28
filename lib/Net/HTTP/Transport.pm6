@@ -52,7 +52,7 @@ class Net::HTTP::Transport does RoundTripper {
         $header<Host>  = $proxy ?? $proxy.host !! $req.url.host;
 
         # override any possible default start-line() method behavior of using a relative request target url if $proxy
-        $req does role :: { method path {$ = ~$req.url } } if $proxy;
+        $req does role :: { method path { $req.url.Str } } if $proxy;
 
         # automatically handle content-length setting
         $header<Content-Length> = !$req.body ?? 0 !! $req.body ~~ Blob ?? $req.body.bytes !! $req.body.encode.bytes;
