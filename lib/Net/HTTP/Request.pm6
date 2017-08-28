@@ -3,10 +3,7 @@ use Net::HTTP::Utils;
 
 my $CRLF = Buf.new(13, 10);
 
-my sub pathify {
-    my $path  = $^a.starts-with('/') ?? $^a.substr(1) !! $^a;
-    $ = $path.chars > 1 && $path.ends-with('/') ?? $path.chop !! $path;
-}
+my sub pathify        { $^a.starts-with('/') ?? $^a.substr(1) !! $^a }
 my sub header2str(%_) { $ = %_.grep(*.value.so).map({ "{hc ~$_.key}: {~$_.value}" }).join("\r\n") }
 my sub body2str($_)   { $_ ~~ Blob ?? $_.unpack("A*") !! $_  }
 my sub body2bin($_)   { $_ ~~ Blob ?? $_ !! $_ ~~ Str ?? $_.chars ?? $_.encode !! '' !! '' }
