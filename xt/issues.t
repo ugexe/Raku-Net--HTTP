@@ -9,13 +9,11 @@ subtest {
    await (^5).map: -> $tid {
       start {
          for ^10 -> $index {
-            my $url = Net::HTTP::URL.new("http://www.google.com/$tid/$index/");
+            my $url    = Net::HTTP::URL.new("http://www.google.com/$tid/$index/");
             my %header = :Connection<keep-alive>, :User-Agent<perl6-net-http>, :Tid($tid), :Index($index);
-            my $req = Net::HTTP::Request.new: :$url, :method<GET>, :%header;
+            my $req    = Net::HTTP::Request.new: :$url, :method<GET>, :%header;
 
-            like ~$req, /GET\s\/$tid\/$index\//;
-            like ~$req, /Tid\:\s$tid/;
-            like ~$req, /Index\:\s$index/;
+            like ~$req, /GET\s\/$tid\/$index\/.+Tid\:\s$tid.+Index\:\s$index/, "tid:$tid index:$index";
          }
       }
    }
