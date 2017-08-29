@@ -8,7 +8,7 @@ use Net::HTTP::URL;
 subtest {
    await (^5).map: -> $tid {
       start {
-         for ^20 -> $index {
+         for ^10 -> $index {
             my $url = Net::HTTP::URL.new("http://www.google.com/$tid/$index/");
             my %header = :Connection<keep-alive>, :User-Agent<perl6-net-http>, :Tid($tid), :Index($index);
             my $req = Net::HTTP::Request.new: :$url, :method<GET>, :%header;
