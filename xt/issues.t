@@ -1,11 +1,13 @@
 use v6;
 use Test;
+plan 2;
 
 use Net::HTTP::Request;
 use Net::HTTP::URL;
 
 diag('https://github.com/ugexe/Perl6-Net--HTTP/issues/8 - thread interpolation while stringifying requests via "{...}"');
 {
+   my @failures;
    await (^5).map: -> $tid {
       start {
          for ^10 -> $index {
@@ -13,11 +15,13 @@ diag('https://github.com/ugexe/Perl6-Net--HTTP/issues/8 - thread interpolation w
             my %header = :Connection<keep-alive>, :User-Agent<perl6-net-http>, :Tid($tid), :Index($index);
             my $req    = Net::HTTP::Request.new: :$url, :method<GET>, :%header;
 
-            like ~$req, /[:i "Tid:"]\s$tid/, "tid:$tid -- {$req.Str.lines.join(' ')}";
-            like ~$req, /[:i Index]\:\s$index/, "index:$index -- {$req.Str.lines.join(' ')}";
+            @failures.push("index:$index tid:$tid -- {$req.Str.lines.join(' ')}")
+               unless $req.Str ~~ /[:i "Tid:"]\s$tid/, "tid:$tid -- {$req.Str.lines.join(' ')}"
+                  && $req.Str ~~ /[:i Index]\:\s$index/, "index:$index -- {$req.Str.lines.join(' ')}";
          }
       }
    }
+   is +@failures, 0;
 }
 
 subtest {
