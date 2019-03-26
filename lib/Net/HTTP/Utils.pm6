@@ -15,11 +15,14 @@ role IO::Socket::HTTP {
     method get(Bool :$bin where *.so, Bool :$chomp = True) {
         my $buf = $.recv(1, :bin);
 
-        repeat {
+        loop {
             my $byte = $.recv(1, :bin);
             last unless $byte.DEFINITE;
             $buf ~= $byte;
-        } until $buf.subbuf($buf.bytes - $CRLF-BYTES, $CRLF-BYTES) eq $CRLF;
+            my $subbuf := $buf.subbuf($buf.bytes - $CRLF-BYTES, $CRLF-BYTES);
+            die "Unexpected EOF in server response (while looking for CRLF)" unless $subbuf.so;
+            last if $subbuf eq $CRLF;
+        }
 
         return ?$chomp ?? $buf.subbuf(0, $buf.bytes - $CRLF-BYTES) !! $buf;
     }
