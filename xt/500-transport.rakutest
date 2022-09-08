@@ -6,7 +6,7 @@ use Net::HTTP::URL;
 use Net::HTTP::Request;
 
 subtest 'Transfer-Encoding: chunked [IO::Socket::INET]' => {
-    my $url = Net::HTTP::URL.new('http://jigsaw.w3.org/HTTP/ChunkedScript');
+    my $url = Net::HTTP::URL.new('http://anglesharp.azurewebsites.net/Chunked');
     my $req = Net::HTTP::Request.new: :$url, :method<GET>,
         header => :Connection<keep-alive>, :User-Agent<raku-net-http>;
 
@@ -14,12 +14,11 @@ subtest 'Transfer-Encoding: chunked [IO::Socket::INET]' => {
     my $res       = $transport.round-trip($req);
     my $decoded   = $res.body.decode;
 
-    is $decoded.lines.grep(/^0/).elems, 1000;
-    is $decoded.chars, 72200;
+    is $decoded.chars, 353;
 }
 
 subtest 'Threads: start { $transport.round-trip($req) }' => {
-    my $url = Net::HTTP::URL.new('http://jigsaw.w3.org/HTTP/ChunkedScript');
+    my $url = Net::HTTP::URL.new('http://anglesharp.azurewebsites.net/Chunked');
     my $req = Net::HTTP::Request.new: :$url, :method<GET>,
         header => :Connection<keep-alive>, :User-Agent<raku-net-http>;
 
@@ -28,7 +27,8 @@ subtest 'Threads: start { $transport.round-trip($req) }' => {
     my @responses = await (start { $transport.round-trip($req) } xx $instances);
 
     for @responses -> $res {
-        is $res.body.decode.lines.grep(/^0/).elems, 1000;
+        my $decoded = $res.body.decode;
+        is $decoded.chars, 353;
     }
 }
 
