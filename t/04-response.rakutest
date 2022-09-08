@@ -1,11 +1,10 @@
-use v6;
-use Test;
+use Test:ver<6.c+>;
 plan 1;
 
 use Net::HTTP::Response;
 use Net::HTTP::URL;
 
-subtest {
+subtest 'Basic: response tests' => {
     my $status-line = "HTTP/1.1 200 OK",
     my %header = %(
         :Access-Control-Allow-Credentials("true"),
@@ -43,6 +42,6 @@ subtest {
     # is-deeply $response-from-args.header.hash, $response-from-buf.header.hash;
 
     is $response-from-args.body.contents, $response-from-buf.body.contents;
-}, 'Basic: response tests';
+}
 
 done-testing;

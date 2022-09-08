@@ -1,15 +1,8 @@
-=pod
-
-=encoding utf8
-
-=head2 Net::HTTP
-
-=for HTML <a href="https://travis-ci.org/ugexe/Perl6-Net--HTTP"><img src="https://travis-ci.org/ugexe/Perl6-Net--HTTP.svg?branch=master"></a>
-          <a href="https://ci.appveyor.com/project/ugexe/Perl6-Net-HTTP/branch/master"><img src="https://ci.appveyor.com/api/projects/status/github/ugexe/Perl6-Net--HTTP?branch=master&passingText=Windows%20-%20OK&failingText=Windows%20-%20FAIL&pendingText=Windows%20-%20pending&svg=true"></a>
+## Net::HTTP
 
 Interfaces and default implementations for rolling your own http client and/or components
 
-=head2 Synopsis
+## Synopsis
 
     use Net::HTTP::GET;
     my %header   = :Connection<keep-alive>;
@@ -22,20 +15,9 @@ Interfaces and default implementations for rolling your own http client and/or c
     my $response = Net::HTTP::POST("http://httpbin.org/post", :$body);
     say $response.content;
 
-=head2 Why
+## How do I...?
 
-Connection caching/keep-alive, thread safety (?), highly interfaceable. Loosely modeled on the golang http library with the goal
-of having a strong separation of components to allow easy interchangability.
-
-=head2 Coming soon
-
-Cookies, multipart posting
-
-=head2 How do I...?
-
-=over 4
-
-=item Use a proxy
+#### Use a proxy
 
 Simply add a proxy method to your client or transport object. For instance, to simply return a url
 from a string you could do:
@@ -45,91 +27,85 @@ from a string you could do:
         method proxy { ::('Net::HTTP::URL').new("http://proxy-lord.org") }
     }
 
-But you could also implement rotating proxies, proxy from C<$*ENV>, etc
+But you could also implement rotating proxies, proxy from `$*ENV`, etc
 
-=back
+## Client Implementations
 
-=head2 Client Implementations
-
-=head3 Net::HTTP::GET
+#### Net::HTTP::GET
 
     my $response = Net::HTTP::GET("http://httpbin.org/ip");
 
-Simple access to the http C<GET> client api.
+Simple access to the http `GET` client api.
 
-=head3 Net::HTTP::POST
+#### Net::HTTP::POST
 
     my $body = Buf.new("a=1&b=2".ords);
     my $response = Net::HTTP::POST("http://httpbin.org/post", :$body);
 
-Simple access to the http C<POST> client api (Still lacking anything beyond basic functionality)
+Simple access to the http `POST` client api (Still lacking anything beyond basic functionality)
 
-=head3 Net::HTTP::Transport
+#### Net::HTTP::Transport
 
         my $url = Net::HTTP::URL.new($abs-url);
-        my $req = Net::HTTP::Request.new(:$url, :method<GET>, :User-Agent<perl6-net-http>);
+        my $req = Net::HTTP::Request.new(:$url, :method<GET>, :User-Agent<raku-net-http>);
         my $transport = Net::HTTP::Transport.new;
         my $response  = $transport.round-trip($req);
 
 A high level round-robin implementation that attempts connection caching and is thread safe.
 For a user-agent level implementation that handles cookies, redirects, auth, etc then use
-a C<Net::HTTP::Client>. Can provide an alternative C<Response> object as an argument.
+a `Net::HTTP::Client`. Can provide an alternative `Response` object as an argument.
 
     > use HTTP::SomethingElse::Response;
     > my \ALTRESPONSE = HTTP::SomethingElse::Response;
     > my $response    = $transport.round-trip($req, ALTRESPONSE);
 
-=head3 Net::HTTP::Client
+#### Net::HTTP::Client
 
     # NYI
 
 Highest level of http client implementation.
 
-=head2 Interface Default Implementations
+## Interface Default Implementations
 
-Most C<Net::HTTP> components can be swapped out for generic alternatives. C<Net::HTTP> provides a set of interfaces
-(see: L<Net::HTTP::Interfaces|https://github.com/ugexe/Perl6-Net--HTTP/blob/master/lib/Net/HTTP/Interfaces.pm6>)
-and the other included classes in C<Net::HTTP> can be viewed as I<default> implementations.
+Most `Net::HTTP` components can be swapped out for generic alternatives. `Net::HTTP` provides a set of interfaces (see: [Net::HTTP::Interfaces](https://github.com/ugexe/Raku-Net--HTTP/blob/main/lib/Net/HTTP/Interfaces.rakumod) and the other included classes in `Net::HTTP` can be viewed as `default` implementations.
 
-=head3 Net::HTTP::URL
+#### Net::HTTP::URL
 
     my $url = Net::HTTP::URL.new("http://google.com/");
 
-Create a C<url> object to provide an api to the url parts, such as I<scheme>, I<host>, and I<port>.
+Create a `url` object to provide an api to the url parts, such as *scheme*, *host*, and *port*.
 
     > say ~$url
     http://google.com/
     > say $url.host;
     google.com
 
-=head3 Net::HTTP::Request
+#### Net::HTTP::Request
 
     my $url     = Net::HTTP::URL.new("http://google.com/");
     my $request = Net::HTTP::Request.new(:$url, :method<GET>, header => :Host<google.com>);
 
-Create a C<Request> object which provides an api to generating an over-the-wire or human readable representation
-of an http request. C<.raw> gives a binary representation, and C<.Str> gives a utf8 encoded version.
+Create a `Request` object which provides an api to generating an over-the-wire or human readable representation
+of an http request. `.raw` gives a binary representation, and `.Str` gives a utf8 encoded version.
 
     > my $socket = IO::Socket::INET.new(:host<google.com>, :port(80));
     > $socket.write($request.raw)
 
-=head3 Net::HTTP::Response
+#### Net::HTTP::Response
 
     my $response-from-args = Net::HTTP::Response.new(:$status-line, :%header, :$body);
     my $response-from-buf  = Net::HTTP::Response.new($response-as-buf);
 
-Creates a C<Response> object that provides an api to parsing an http response. It can be created with named arguments
-representing the http message parts, or it can be given a raw C<Blob>.
+Creates a `Response` object that provides an api to parsing an http response. It can be created with named arguments
+representing the http message parts, or it can be given a raw `Blob`.
 
     > my $data = buf8.new andthen while $socket.recv(:bin) -> d { $data ~= $d }
     > my $response = Net::HTTP::Response.new($data)
 
-=head3 Net::HTTP::Dialer
+#### Net::HTTP::Dialer
 
     my $url     = Net::HTTP::URL.new("http://google.com/");
     my $request = Net::HTTP::Request.new(:$url, :method<GET>, header => :Host<google.com>);
     my $socket  = Net::HTTP::Dialer.new.dial($request);
 
 A role for providing access to scheme appropriate socket connections.
-
-=cut

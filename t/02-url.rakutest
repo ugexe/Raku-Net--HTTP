@@ -1,10 +1,9 @@
-use v6;
-use Test;
+use Test:ver<6.c+>;
 plan 3;
 
 use Net::HTTP::URL;
 
-subtest {
+subtest '[name] valid absolute urls' => {
     my %valid = %(
         "http://httpbin.org"
             => %( :scheme<http>, :host<httpbin.org> ),
@@ -49,9 +48,9 @@ subtest {
             is $url."$part"(), $expected;
         }
     }
-}, '[name] valid absolute urls';
+}
 
-subtest {
+subtest '[ipv4] valid absolute urls' => {
     my %valid = %(
         "http://192.168.0.1"
             => %( :scheme<http>, :host<192.168.0.1> ),
@@ -96,10 +95,10 @@ subtest {
             is $url."$part"(), $expected;
         }
     }
-}, '[ipv4] valid absolute urls';
+}
 
 
-subtest {
+subtest '[ipv6] valid absolute urls' => {
     my %valid = %(
         "http://[2601:587:200:d159:972:cd3b:eb76:4eb5]"
             => %( :scheme<http>, :host<[2601:587:200:d159:972:cd3b:eb76:4eb5]> ),
@@ -144,6 +143,6 @@ subtest {
             is $url."$part"(), $expected;
         }
     }
-}, '[ipv6] valid absolute urls';
+}
 
 done-testing;

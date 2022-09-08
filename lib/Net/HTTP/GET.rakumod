@@ -12,7 +12,7 @@ class Net::HTTP::GET {
         my $url = Net::HTTP::URL.new($abs-url);
         with Net::HTTP::Request.new(:$url, :method<GET>) -> $req {
             temp %header<Connection> //= <keep-alive>;
-            temp %header<User-Agent> //= <perl6-net-http>;
+            temp %header<User-Agent> //= <raku-net-http>;
             $req.body   = $body || Buf.new;
             $req.header = %header;
             samewith($req, |c);
