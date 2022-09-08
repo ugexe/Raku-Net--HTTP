@@ -19,6 +19,8 @@
     },
     "depends"     : [ ],
     "tags"        : [ "HTTP", "Client" ],
-    "support"     : { "bugtracker" : "https://github.com/ugexe/Perl6-Net--HTTP/issues" },
-    "source-url"  : "git://github.com/ugexe/Perl6-Net--HTTP.git"
+    "support"     : {
+        "bugtracker" : "https://github.com/ugexe/Raku-Net--HTTP/issues",
+        "source" : "https://github.com/ugexe/Raku-Net--HTTP.git"
+    }
 }
