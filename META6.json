@@ -1,6 +1,6 @@
 {
     "name"        : "Net::HTTP",
-    "version"     : "0.0.9",
+    "version"     : "0.1.0",
     "auth"        : "github:ugexe",
     "authors"     : ["ugexe"],
     "description" : "Roll your own http client",
