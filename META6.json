@@ -17,9 +17,10 @@
         "Net::HTTP::URL"        : "lib/Net/HTTP/URL.rakumod",
         "Net::HTTP::Utils"      : "lib/Net/HTTP/Utils.rakumod"
     },
-    "depends"     : [ ],
-    "tags"        : [ "HTTP", "Client" ],
-    "support"     : {
+    "depends"      : [ ],
+    "test-depends" : [ "Test:ver<6.c+>" ],
+    "tags"         : [ "HTTP", "Client" ],
+    "support"      : {
         "bugtracker" : "https://github.com/ugexe/Raku-Net--HTTP/issues",
         "source" : "https://github.com/ugexe/Raku-Net--HTTP.git"
     }
