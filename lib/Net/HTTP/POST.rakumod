@@ -8,9 +8,9 @@ class Net::HTTP::POST {
     proto method CALL-ME(|) {*}
     multi method CALL-ME(Str:D $abs-url, :%header is copy, :$body?, |c --> Response) {
         my $url = Net::HTTP::URL.new($abs-url);
-        with Net::HTTP::Request.new(:$url, :$body, :method<POST>, :User-Agent<perl6-net-http>) -> $req {
+        with Net::HTTP::Request.new(:$url, :$body, :method<POST>, :User-Agent<raku-net-http>) -> $req {
             temp %header<Connection> //= <keep-alive>;
-            temp %header<User-Agent> //= <perl6-net-http>;
+            temp %header<User-Agent> //= <raku-net-http>;
             $req.body   = $body || Buf.new;
             $req.header = %header;
             samewith($req, |c);

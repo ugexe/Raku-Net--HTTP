@@ -47,7 +47,7 @@ Simple access to the http `POST` client api (Still lacking anything beyond basic
 #### Net::HTTP::Transport
 
         my $url = Net::HTTP::URL.new($abs-url);
-        my $req = Net::HTTP::Request.new(:$url, :method<GET>, :User-Agent<perl6-net-http>);
+        my $req = Net::HTTP::Request.new(:$url, :method<GET>, :User-Agent<raku-net-http>);
         my $transport = Net::HTTP::Transport.new;
         my $response  = $transport.round-trip($req);
 
