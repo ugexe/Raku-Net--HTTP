@@ -4,7 +4,7 @@ plan 1;
 use Net::HTTP::Request;
 use Net::HTTP::URL;
 
-subtest {
+subtest 'Basic: request header tests' => {
     my $want-str = q{GET /search?x=1 HTTP/1.1}
         ~ "\r\n" ~ q{Host: google.com}
         ~ "\r\n" ~ q{User-Agent: raku-net-http}
@@ -28,6 +28,6 @@ subtest {
             ok $_ ~~ any(@got);
         }
     }, 'Auto setting the host header';
-}, 'Basic: request header tests';
+}
 
 done-testing;

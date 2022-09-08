@@ -23,7 +23,7 @@ diag('https://github.com/ugexe/Raku-Net--HTTP/issues/8 - thread interpolation wh
    is +@failures, 0;
 }
 
-subtest {
+subtest 'https://github.com/ugexe/Raku-Net--HTTP/issues/11 - Net::HTTP::Request::raw explodes on large (> 64kb) requests' => {
    my $request = Net::HTTP::Request.new(
       :url(Net::HTTP::URL.new("http://www.google.com/")),
       :method<GET>,
@@ -32,6 +32,6 @@ subtest {
    );
 
    lives-ok { $request.raw().sink }
-}, 'https://github.com/ugexe/Raku-Net--HTTP/issues/11 - Net::HTTP::Request::raw explodes on large (> 64kb) requests';
+}
 
 done-testing;

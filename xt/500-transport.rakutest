@@ -5,7 +5,7 @@ use Net::HTTP::Transport;
 use Net::HTTP::URL;
 use Net::HTTP::Request;
 
-subtest {
+subtest 'Transfer-Encoding: chunked [IO::Socket::INET]' => {
     my $url = Net::HTTP::URL.new('http://jigsaw.w3.org/HTTP/ChunkedScript');
     my $req = Net::HTTP::Request.new: :$url, :method<GET>,
         header => :Connection<keep-alive>, :User-Agent<raku-net-http>;
@@ -16,9 +16,9 @@ subtest {
 
     is $decoded.lines.grep(/^0/).elems, 1000;
     is $decoded.chars, 72200;
-}, 'Transfer-Encoding: chunked [IO::Socket::INET]';
+}
 
-subtest {
+subtest 'Threads: start { $transport.round-trip($req) }' => {
     my $url = Net::HTTP::URL.new('http://jigsaw.w3.org/HTTP/ChunkedScript');
     my $req = Net::HTTP::Request.new: :$url, :method<GET>,
         header => :Connection<keep-alive>, :User-Agent<raku-net-http>;
@@ -30,11 +30,11 @@ subtest {
     for @responses -> $res {
         is $res.body.decode.lines.grep(/^0/).elems, 1000;
     }
-}, 'Threads: start { $transport.round-trip($req) }';
+}
 
 
 if Net::HTTP::Dialer.?can-ssl {
-    subtest {
+    subtest 'Transfer-Encoding: chunked [IO::Socket::SSL]' => {
         my $url = Net::HTTP::URL.new('https://jigsaw.w3.org/HTTP/ChunkedScript');
         my $req = Net::HTTP::Request.new: :$url, :method<GET>,
             header => :Connection<close>, :User-Agent<raku-net-http>;
@@ -45,14 +45,14 @@ if Net::HTTP::Dialer.?can-ssl {
 
         is $decoded.lines.grep(/^0/).elems, 1000;
         is $decoded.chars, 72200;
-    }, 'Transfer-Encoding: chunked [IO::Socket::SSL]';
+    }
 }
 else {
     ok 1, "Skip: Can't do SSL. Is IO::Socket::SSL available?";
 }
 
 if Net::HTTP::Dialer.?can-ssl {
-    subtest {
+    subtest 'Threads: start { $transport.round-trip($req) } [IO::Socket::SSL]' => {
         my $url = Net::HTTP::URL.new('https://jigsaw.w3.org/HTTP/ChunkedScript');
         my $req = Net::HTTP::Request.new: :$url, :method<GET>,
             header => :Connection<close>, :User-Agent<raku-net-http>;
@@ -64,7 +64,7 @@ if Net::HTTP::Dialer.?can-ssl {
         for @responses -> $res {
             is $res.body.decode.lines.grep(/^0/).elems, 1000;
         }
-    }, 'Threads: start { $transport.round-trip($req) } [IO::Socket::SSL]';
+    }
 }
 else {
     ok 1, "Skip: Can't do SSL. Is IO::Socket::SSL available?";

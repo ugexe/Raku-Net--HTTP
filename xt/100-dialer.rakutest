@@ -6,7 +6,7 @@ use Net::HTTP::URL;
 use Net::HTTP::Request;
 
 
-subtest {
+subtest 'IO::Socket::INET selected and works' => {
     my $url     = Net::HTTP::URL.new("http://httpbin.org/ip");
     my $method  = 'GET';
     my %header  = :Host<httpbin.org>, :User-Agent("raku-net-http");
@@ -14,11 +14,11 @@ subtest {
     my $socket  = Net::HTTP::Dialer.new.dial($request);
 
     ok $socket ~~ IO::Socket::INET, 'IO::Socket::INET';
-}, 'IO::Socket::INET selected and works';
+}
 
 
 if Net::HTTP::Dialer.?can-ssl {
-    subtest {
+    subtest 'IO::Socket::SSL selected and works' => {
         my $url     = Net::HTTP::URL.new("https://httpbin.org/ip");
         my $method  = 'GET';
         my %header  = :Host<httpbin.org>, :User-Agent("raku-net-http");
@@ -26,7 +26,7 @@ if Net::HTTP::Dialer.?can-ssl {
         my $socket  = Net::HTTP::Dialer.new.dial($request);
 
         ok $socket ~~ ::('IO::Socket::SSL'), 'IO::Socket::SSL';
-    }, 'IO::Socket::SSL selected and works';
+    }
 }
 else {
     ok 1, "Skip: Can't do SSL. Is IO::Socket::SSL available?";

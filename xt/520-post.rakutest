@@ -15,7 +15,7 @@ sub from-json($text) is export {
         }
 }
 
-subtest {
+subtest 'Basic POST' => {
     my $url     = "http://httpbin.org/post";
     my $payload = "a=b&c=d&f=";
     my $body    = Buf.new($payload.ords);
@@ -25,6 +25,6 @@ subtest {
 
     my $results = from-json($response.content(:force));
     is $results<data>, $payload;
-}, "Basic POST";
+}
 
 done-testing;
